@@ -42,7 +42,7 @@ impl Event {
             owner,
             object_index: (f >> 48) as usize,
             delta: (f & 0xffffffff) as usize,
-            modifier_index: ((f >> 48) & 0x7f) as usize,
+            modifier_index: ((f >> 32) & 0x7f) as usize,
         }
     }
 }
@@ -86,6 +86,7 @@ fn apply_object_modifier(
             //zkwasm_rust_sdk::dbg!("object after: {:?}\n", object);
             //zkwasm_rust_sdk::dbg!("player after: {:?}\n", player);
             let next_index = (modifier_index + 1) % object.modifiers.len();
+
             let modifier_id = object.modifiers[next_index];
             object.start_new_modifier(next_index, counter);
             object.store();
@@ -95,7 +96,6 @@ fn apply_object_modifier(
         } else {
             object.halt();
             object.store();
-            zkwasm_rust_sdk::dbg!("apply modifier failed\n");
             None
         }
     }
