@@ -38,14 +38,13 @@ WORKDIR /usr/src/zkwasm-typescript-mini-server
 # Create the supervisor configuration directory
 RUN mkdir -p /etc/supervisor/conf.d
 COPY ./deploy/supervisord.conf /etc/supervisor/supervisord.conf
+COPY ./deploy/start.sh ./start.sh
 
 COPY ./ts ./zkwasm-ts-server
-
-#WORKDIR /usr/src/ts
-#ENV MERKLE_SERVER=zkwasm-server:3030
 
 EXPOSE 3000
 
 # Run the application
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+CMD ["sh", "start.sh"]
+#CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
 
