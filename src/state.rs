@@ -260,33 +260,56 @@ impl Owner for AutomataPlayer {
     }
 }
 
-pub struct State {}
+pub struct State {
+    pub supplement: u64,
+    pub events: EventQueue,
+}
+
+#[derive (Serialize)]
+pub struct QueryResult {
+    player: AutomataPlayer,
+    objects: Vec<Object>,
+    counter: u64,
+}
 
 impl State {
     pub fn get_state(pid: Vec<u64>) -> String {
         let player = AutomataPlayer::get(&pid.try_into().unwrap()).unwrap();
-        let mut objs = vec![];
+        let mut objects = vec![];
         for (index, _) in player.data.objects.iter().enumerate() {
             let oid = player.get_obj_id(index);
             let obj = Object::get(&oid).unwrap();
-            objs.push(obj);
+            objects.push(obj);
         }
-        let counter = QUEUE.0.borrow().counter;
-        serde_json::to_string(&(player, objs, counter)).unwrap()
+        let r = QueryResult {
+            player,
+            objects,
+            counter: STATE.0.borrow().events.counter
+        };
+        serde_json::to_string(&r).unwrap()
     }
     pub fn store() {
-        QUEUE.0.borrow_mut().store();
+        let state = STATE.0.borrow_mut();
+        state.events.store();
     }
     pub fn initialize() {
-        QUEUE.0.borrow_mut().fetch();
+        let mut state = STATE.0.borrow_mut();
+        state.supplement = 1;
+        state.events.fetch();
+    }
+    pub fn new() -> Self {
+        State {
+            supplement: 0,
+            events: EventQueue::new()
+        }
     }
 }
 
-pub struct SafeEventQueue(RefCell<EventQueue>);
-unsafe impl Sync for SafeEventQueue {}
+pub struct SafeState(RefCell<State>);
+unsafe impl Sync for SafeState {}
 
 lazy_static::lazy_static! {
-    pub static ref QUEUE: SafeEventQueue = SafeEventQueue (RefCell::new(EventQueue::new()));
+    pub static ref STATE: SafeState = SafeState (RefCell::new(State::new()));
 }
 
 pub struct Transaction {
@@ -357,10 +380,10 @@ impl Transaction {
                 let oid = player.get_obj_id(objindex);
                 let (delay, _) = get_modifier(mid);
                 let mut object = Object::new(&oid, self.data.clone());
-                object.start_new_modifier(0, QUEUE.0.borrow().counter);
+                object.start_new_modifier(0, STATE.0.borrow().events.counter);
                 object.store();
                 player.store();
-                QUEUE.0.borrow_mut().insert(self.objindex, pkey, delay, 0);
+                STATE.0.borrow_mut().events.insert(self.objindex, pkey, delay, 0);
                 0 // no error occurred
             }
         }
@@ -374,12 +397,13 @@ impl Transaction {
                 player.check_and_inc_nonce(self.nonce);
                 player.store();
                 let oid = player.get_obj_id(self.objindex);
-                let counter = QUEUE.0.borrow().counter;
+                let counter = STATE.0.borrow().events.counter;
                 let data = &self.data;
-                if let Some((delay, modifier)) = restart_object_modifier(&oid, /*QUEUE.0.borrow().*/counter, data) {
-                    QUEUE
+                if let Some((delay, modifier)) = restart_object_modifier(&oid, counter, data) {
+                   STATE
                         .0
                         .borrow_mut()
+                        .events
                         .insert(self.objindex, pkey, delay, modifier);
                 }
                 0 // no error occurred
@@ -451,16 +475,12 @@ impl Transaction {
             WITHDRAW => self.withdraw(pkey),
             DEPOSIT => self.deposit(pkey),
             _ => {
-                QUEUE.0.borrow_mut().tick();
+                STATE.0.borrow_mut().events.tick();
                 0
             }
         };
         let kvpair = unsafe { &mut MERKLE_MAP.merkle.root };
         zkwasm_rust_sdk::dbg!("root after process {:?}\n", kvpair);
         b
-    }
-
-    pub fn automaton() {
-        QUEUE.0.borrow_mut().tick();
     }
 }
