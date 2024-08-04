@@ -1,5 +1,4 @@
-./target/release/csm_service --uri $URI &
-cd ts && npm run docker-server
+./target/release/csm_service --uri $URI & node /usr/src/zkwasm-typescript-mini-server/zkwasm-ts-server/node_modules/zkwasm-ts-server/src/service.js redis
 
 # Wait for any process to exit
 wait -n
