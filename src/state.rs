@@ -1,10 +1,12 @@
 use crate::config::{default_entities, default_local, get_modifier};
 use crate::events::restart_object_modifier;
 use crate::events::EventQueue;
+use crate::settlement::SettlementInfo;
 use crate::StorageData;
-use crate::settlement::{encode_address, SettleMentInfo, WithdrawInfo};
 use crate::MERKLE_MAP;
 use serde::{Serialize, Serializer, ser::SerializeSeq};
+use zkwasm_rest_abi::WithdrawInfo;
+use zkwasm_rust_sdk::require;
 use std::cell::RefCell;
 use crate::Player;
 use core::slice::IterMut; 
@@ -387,17 +389,15 @@ impl Transaction {
             None => ERROR_PLAYER_NOT_EXIST,
             Some(player) => {
                 if let Some(treasure) = player.data.local.0.last_mut() {
-                    let withdraw = WithdrawInfo::new(
-                        0,
-                        0,
-                        0,
-                        [*treasure as u64, 0, 0, 0],
-                        encode_address(&self.data),
-                    );
-                    SettleMentInfo::append_settlement(withdraw);
-                    *treasure = 0;
-                    //let t = player.data.local.0.last().unwrap();
-                    //zkwasm_rust_sdk::dbg!("treasure is {}", t);
+                    let amount = self.data[0] & 0xffffffff;
+                    unsafe { require(*treasure >= (amount as i64)) };
+                    *treasure -= amount as i64;
+                    let withdrawinfo = WithdrawInfo::new(&[
+                        self.data[0],
+                        self.data[1],
+                        self.data[2]
+                    ]);
+                    SettlementInfo::append_settlement(withdrawinfo);
                     player.store();
                 } else {
                     unreachable!();
