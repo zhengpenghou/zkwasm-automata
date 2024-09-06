@@ -6,6 +6,7 @@ use crate::object::Object;
 use serde::{Serialize, Serializer, ser::SerializeSeq};
 use crate::Player;
 use crate::StorageData;
+use crate::error::ERROR_NOT_ENOUGH_BALANCE;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Attributes(pub Vec<i64>);
@@ -48,7 +49,24 @@ impl Attributes {
 }
 
 impl PlayerData {
-    pub fn apply_object_card(&mut self, object_index: usize, counter: u64) -> Option<(usize, usize)> {
+    pub fn generate_card(&mut self, rand: &[u64; 4]) {
+        self.cards.push(self.cards[0].clone())
+    }
+
+    pub fn pay_balance(&mut self, b: i64) -> Result <(), u32> {
+        if let Some(treasure) = self.local.0.last_mut() {
+            if *treasure >= b {
+                *treasure -= b;
+                Ok(())
+            } else {
+                Err(ERROR_NOT_ENOUGH_BALANCE)
+            }
+        } else {
+            unreachable!();
+        }
+    }
+
+    pub fn apply_object_card(&mut self, object_index: usize, counter: u64) -> Option<usize> {
         let object = self.objects[object_index].clone();
         let current_index = object.get_modifier_index() as usize;
         if object.is_restarting() {
@@ -56,7 +74,7 @@ impl PlayerData {
             let duration = object.cards[next_index].duration;
             let object = self.objects.get_mut(object_index).unwrap();
             object.start_new_modifier(next_index, counter);
-            Some((duration as usize, next_index))
+            Some(duration as usize)
         } else {
             let applied = self.apply_modifier(&object.cards[current_index]);
             let object = self.objects.get_mut(object_index).unwrap();
@@ -66,7 +84,7 @@ impl PlayerData {
                 let next_index = (current_index + 1) % object.cards.len();
                 let duration = object.cards[next_index].duration;
                 object.start_new_modifier(next_index, counter);
-                Some((duration as usize, next_index))
+                Some(duration as usize)
             } else {
                 object.halt();
                 None
@@ -74,7 +92,7 @@ impl PlayerData {
         }
     }
 
-    pub fn restart_object_card(&mut self, object_index: usize, data: &Vec<usize>, counter: u64) -> Option<(usize, usize)> {
+    pub fn restart_object_card(&mut self, object_index: usize, data: &Vec<usize>, counter: u64) -> Option<usize> {
         let object = self.objects.get_mut(object_index).unwrap();
         let halted = object.is_halted();
         if halted {
@@ -85,9 +103,8 @@ impl PlayerData {
             let duration = object.cards[modifier_index as usize].duration;
             object.restart(counter);
             zkwasm_rust_sdk::dbg!("object restarted\n");
-            Some((duration as usize, modifier_index as usize))
+            Some(duration as usize)
         } else {
-            zkwasm_rust_sdk::dbg!("restart modifier failed, start reset modifier index... \n");
             object.reset_halt_bit_to_restart();
             None
         }

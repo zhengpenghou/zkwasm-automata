@@ -9,6 +9,8 @@ async function main() {
 
   await player.installPlayer();
 
+  await player.deposit();
+
   await player.installObject([0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
 
   await player.installObject([0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);

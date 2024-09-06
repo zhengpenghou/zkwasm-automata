@@ -25,8 +25,10 @@ function addrToParams(bn: BN): Array<bigint> {
 const CMD_INSTALL_PLAYER = 1n;
 const CMD_INSTALL_OBJECT = 2n;
 const CMD_RESTART_OBJECT = 3n;
-const CMD_WITHDRAW= 4n;
-const CMD_DEPOSIT = 4n;
+const CMD_UPGRADE_OBJECT = 4n;
+const CMD_INSTALL_CARD = 5n;
+const CMD_WITHDRAW= 6n;
+const CMD_DEPOSIT = 7n;
 
 function createCommand(nonce: bigint, command: bigint, objindex: bigint) {
   return (nonce << 16n) + (objindex << 8n) + command;

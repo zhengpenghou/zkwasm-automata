@@ -7,6 +7,7 @@ pub mod state;
 pub mod card;
 pub mod player;
 pub mod object;
+pub mod error;
 
 use crate::config::Config;
 use crate::state::{State, Transaction};

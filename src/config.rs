@@ -1,4 +1,5 @@
 use crate::player::Attributes;
+use crate::card::Card;
 use serde::Serialize;
 pub const ENTITY_ATTRIBUTES_SIZE: usize = 4; //level speed efficiency productivity
 pub const LOCAL_ATTRIBUTES_SIZE: usize = 8;
@@ -30,7 +31,7 @@ pub fn default_local() -> [i64; LOCAL_ATTRIBUTES_SIZE] {
 
 const LOCAL_RESOURCE_WEIGHT: [u64; LOCAL_ATTRIBUTES_SIZE] = [1, 1, 2, 4, 4, 32, 64, 512];
 
-pub fn random_modifier(current_resource: [u64; LOCAL_ATTRIBUTES_SIZE], rand: u64) {
+pub fn random_modifier(current_resource: [u64; LOCAL_ATTRIBUTES_SIZE], rand: u64) -> Card {
     todo!()
 }
 

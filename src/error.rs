@@ -1,0 +1,5 @@
+pub const ERROR_PLAYER_ALREADY_EXIST:u32 = 1;
+pub const ERROR_PLAYER_NOT_EXIST:u32 = 2;
+pub const ERROR_NOT_ENOUGH_BALANCE:u32 = 3;
+
+

@@ -94,7 +94,7 @@ impl EventQueue {
                 let mut player = AutomataPlayer::get_from_pid(&owner_id).unwrap();
                 let m = player.data.apply_object_card(object_index, counter);
                 self.list.pop_front();
-                if let Some((delta, modifier_index)) = m {
+                if let Some(delta) = m {
                     self.insert(object_index, &owner_id, delta);
                 }
             } else {
