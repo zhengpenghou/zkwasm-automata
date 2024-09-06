@@ -38,8 +38,10 @@ pub struct Transaction {
 const INSTALL_PLAYER: u64 = 1;
 const INSTALL_OBJECT: u64 = 2;
 const RESTART_OBJECT: u64 = 3;
-const WITHDRAW: u64 = 4;
-const DEPOSIT: u64 = 5;
+const UPGRADE_OBJECT: u64 = 4;
+const INSTALL_CARD: u64 = 5;
+const WITHDRAW: u64 = 6;
+const DEPOSIT: u64 = 7;
 
 const ERROR_PLAYER_ALREADY_EXIST:u32 = 1;
 const ERROR_PLAYER_NOT_EXIST:u32 = 2;
