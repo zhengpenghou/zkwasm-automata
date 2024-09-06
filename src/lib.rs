@@ -4,6 +4,9 @@ pub mod config;
 pub mod events;
 pub mod settlement;
 pub mod state;
+pub mod card;
+pub mod player;
+pub mod object;
 
 use crate::config::Config;
 use crate::state::{State, Transaction};
