@@ -10,6 +10,10 @@ function encode_modifier(modifiers: Array<bigint>) {
   return c;
 }
 
+function bytesToHex(bytes: Array<number>): string  {
+    return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
 function addrToParams(bn: BN): Array<bigint> {
   // address is encoded in BigEndian
   const mask = new BN('ffffffffffffffff', 16);
@@ -165,20 +169,45 @@ export class Player {
     }
   }
 
-  async withdraw(address: string) {
+  async withdrawRewards(address: string, amount: bigint) {
     let nonce = await this.getNonce();
-    let addParams = addrToParams(new BN(address, 16));
+    let addressBN = new BN(address, 16);
+    let a = addressBN.toArray("be", 20); // 20 bytes = 160 bits and split into 4, 8, 8
+
+    console.log("address is", address);
+    console.log("address be is", a);
+
+
+    /*
+  (32 bit amount | 32 bit highbit of address)
+  (64 bit mid bit of address (be))
+  (64 bit tail bit of address (be))
+     */
+
+
+    let firstLimb = BigInt('0x' + bytesToHex(a.slice(0,4).reverse()));
+    let sndLimb = BigInt('0x' + bytesToHex(a.slice(4,12).reverse()));
+    let thirdLimb = BigInt('0x' + bytesToHex(a.slice(12, 20).reverse()));
+
+
+    console.log("first is", firstLimb);
+    console.log("snd is", sndLimb);
+    console.log("third is", thirdLimb);
+
     try {
-      let finished = await rpc.sendTransaction(
-        new BigUint64Array([createCommand(nonce, CMD_WITHDRAW, 0n), addParams[0], addParams[1], addParams[2]]),
-        this.processingKey
-      );
-      console.log("withdraw processed at:", finished);
+      let processStamp = await rpc.sendTransaction(
+        new BigUint64Array([
+          createCommand(nonce, CMD_WITHDRAW, 0n),
+          (firstLimb << 32n) + amount,
+          sndLimb,
+          thirdLimb
+        ]), this.processingKey);
+      console.log("withdraw rewards processed at:", processStamp);
     } catch(e) {
-      if(e instanceof Error) {
+      if (e instanceof Error) {
         console.log(e.message);
       }
-      console.log("withdraw error at address:", address, "processing key:", this.processingKey);
+      console.log("collect reward error at address:", address);
     }
   }
 }

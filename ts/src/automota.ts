@@ -13,13 +13,12 @@ async function main() {
   await player.installCard();
   await player.restartObject(0n, [0n, 0n, 0n, 0n, 0n, 0n, 0n, 4n]);
   await player.upgradeObject(0n);
-
   let state = await player.getState();
   console.log("query state:", state);
 
   await player.deposit();
 
-  await player.withdraw('123456789011121314');
+  await player.withdrawRewards("c177d1d314C8FFe1Ea93Ca1e147ea3BE0ee3E470", 1n);
 }
 
 main();
