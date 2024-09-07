@@ -1,6 +1,5 @@
 use std::slice::IterMut;
-
-use serde::{Serialize, Serializer, ser::SerializeSeq};
+use serde::{Serialize, Serializer};
 use crate::StorageData;
 use crate::card::Card;
 

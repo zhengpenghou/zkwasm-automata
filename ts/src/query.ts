@@ -1,3 +1,4 @@
+import {stringify} from "querystring";
 import { Player } from "./api.js";
 
 let account = "1234";
@@ -8,13 +9,7 @@ async function main() {
   let data = await player.getState();
 
   console.log("player info:");
-  console.log(data[0]);
-
-  console.log("object info:");
-  console.log(data[1]);
-
-  console.log("global time:");
-  console.log(data[2]);
+  console.log(JSON.stringify(data));
 
   let config = await player.getConfig();
   console.log("config", config);

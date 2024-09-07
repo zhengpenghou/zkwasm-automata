@@ -10,6 +10,7 @@ use crate::object::Object;
 use core::slice::IterMut;
 use crate::error::*;
 
+/*
 // Custom serializer for `[u64; 4]` as a [String; 4].
 fn serialize_u64_array_as_string<S>(value: &[u64; 4], serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -21,6 +22,7 @@ fn serialize_u64_array_as_string<S>(value: &[u64; 4], serializer: S) -> Result<S
         }
         seq.end()
     }
+*/
 
 pub struct SafeEventQueue(RefCell<EventQueue>);
 unsafe impl Sync for SafeEventQueue {}
@@ -189,9 +191,9 @@ impl Transaction {
             None => Err(ERROR_PLAYER_NOT_EXIST),
             Some(player) => {
                 player.check_and_inc_nonce(self.nonce);
-                let total_cards = player.data.cards.len();
                 player.data.pay_cost()?;
                 player.data.generate_card(rand);
+                zkwasm_rust_sdk::dbg!("cards {}\n", {player.data.cards.len()});
                 player.store();
                 Ok(())
             }

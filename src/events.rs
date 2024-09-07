@@ -1,7 +1,5 @@
 use std::collections::LinkedList;
-
 use zkwasm_rest_abi::MERKLE_MAP;
-use crate::object::Object;
 use crate::player::AutomataPlayer;
 
 #[derive(Clone)]

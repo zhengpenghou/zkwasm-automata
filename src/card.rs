@@ -10,9 +10,6 @@ pub struct Card {
 }
 
 impl Card {
-    fn get_attributes(self) -> [i8; LOCAL_ATTRIBUTES_SIZE] {
-        self.attributes
-    }
     fn new(duration: u64, attributes: [i8; LOCAL_ATTRIBUTES_SIZE]) -> Self {
         Card {
             duration,

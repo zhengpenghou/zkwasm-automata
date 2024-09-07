@@ -1,9 +1,9 @@
 use std::slice::IterMut;
 use crate::MERKLE_MAP;
 use crate::card::{Card, DEFAULT_CARDS};
-use crate::config::default_local;
+use crate::config::{default_local, random_modifier};
 use crate::object::Object;
-use serde::{Serialize, Serializer, ser::SerializeSeq};
+use serde::Serialize;
 use crate::Player;
 use crate::StorageData;
 use crate::config::COST_INCREASE_ROUND;
@@ -55,7 +55,8 @@ impl Attributes {
 
 impl PlayerData {
     pub fn generate_card(&mut self, rand: &[u64; 4]) {
-        self.cards.push(self.cards[0].clone())
+        let new_card = random_modifier(self.local.0.clone().try_into().unwrap(), rand[1]);
+        self.cards.push(new_card)
     }
 
     pub fn pay_cost(&mut self) -> Result <(), u32> {
@@ -63,7 +64,7 @@ impl PlayerData {
         self.cost_info -= 1;
         if self.cost_info == 0 {
             self.cost_info = COST_INCREASE_ROUND;
-            if (self.current_cost != 0) {
+            if self.current_cost != 0 {
                 self.current_cost = self.current_cost * 2
             } else {
                 self.current_cost = 1;
