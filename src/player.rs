@@ -6,6 +6,7 @@ use crate::object::Object;
 use serde::{Serialize, Serializer, ser::SerializeSeq};
 use crate::Player;
 use crate::StorageData;
+use crate::config::COST_INCREASE_ROUND;
 use crate::error::ERROR_NOT_ENOUGH_BALANCE;
 
 #[derive(Clone, Debug, Serialize)]
@@ -27,6 +28,8 @@ impl Attributes {
 
 #[derive(Debug, Serialize)]
 pub struct PlayerData {
+    pub cost_info: u32,
+    pub current_cost: u32,
     pub objects: Vec<Object>,
     pub local: Attributes,
     pub cards: Vec<Card>,
@@ -35,6 +38,8 @@ pub struct PlayerData {
 impl Default for PlayerData {
     fn default() -> Self {
         Self {
+            cost_info: COST_INCREASE_ROUND,
+            current_cost: 0,
             objects: vec![],
             local: Attributes::default_local(),
             cards: DEFAULT_CARDS.clone(),
@@ -53,7 +58,21 @@ impl PlayerData {
         self.cards.push(self.cards[0].clone())
     }
 
-    pub fn pay_balance(&mut self, b: i64) -> Result <(), u32> {
+    pub fn pay_cost(&mut self) -> Result <(), u32> {
+        self.cost_balance(self.current_cost as i64)?;
+        self.cost_info -= 1;
+        if self.cost_info == 0 {
+            self.cost_info = COST_INCREASE_ROUND;
+            if (self.current_cost != 0) {
+                self.current_cost = self.current_cost * 2
+            } else {
+                self.current_cost = 1;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn cost_balance(&mut self, b: i64) -> Result <(), u32> {
         if let Some(treasure) = self.local.0.last_mut() {
             if *treasure >= b {
                 *treasure -= b;
@@ -64,6 +83,14 @@ impl PlayerData {
         } else {
             unreachable!();
         }
+    }
+
+    pub fn upgrade_object(&mut self, object_index: usize, rand: &[u64; 4]) {
+        let mode = (rand[2] % 3) as usize;
+        let object = self.objects.get_mut(object_index).unwrap();
+        unsafe { zkwasm_rust_sdk::require(object.attributes[0]<128) };
+        object.attributes[0] += 1;
+        object.attributes[mode] += 1;
     }
 
     pub fn apply_object_card(&mut self, object_index: usize, counter: u64) -> Option<usize> {
@@ -125,6 +152,7 @@ impl PlayerData {
 
 impl StorageData for PlayerData {
     fn from_data(u64data: &mut IterMut<u64>) -> Self {
+        let cost_info = *u64data.next().unwrap();
         let objects_size = *u64data.next().unwrap();
         let mut objects = Vec::with_capacity(objects_size as usize);
         for _ in 0..objects_size {
@@ -143,12 +171,15 @@ impl StorageData for PlayerData {
             cards.push(Card::from_data(u64data));
         }
         PlayerData {
+            cost_info: (cost_info >> 32) as u32,
+            current_cost: (cost_info & 0xffffffff) as u32,
             objects,
             local: Attributes(local),
             cards,
         }
     }
     fn to_data(&self, data: &mut Vec<u64>) {
+        data.push(((self.cost_info as u64) << 32) + (self.current_cost as u64));
         data.push(self.objects.len() as u64);
         for c in self.objects.iter() {
             c.to_data(data);

@@ -74,14 +74,14 @@ impl Transaction {
             data,
         }
     }
-    pub fn install_player(&self, pid: &[u64; 2]) -> u32 {
+    pub fn install_player(&self, pid: &[u64; 2]) -> Result<(), u32> {
         let player = AutomataPlayer::get_from_pid(pid);
         match player {
-            Some(_) => ERROR_PLAYER_ALREADY_EXIST,
+            Some(_) => Err(ERROR_PLAYER_ALREADY_EXIST),
             None => {
                 let player = AutomataPlayer::new_from_pid(*pid);
                 player.store();
-                0
+                Ok(())
             }
         }
     }
@@ -93,8 +93,7 @@ impl Transaction {
                 player.check_and_inc_nonce(self.nonce);
                 let objindex = player.data.objects.len();
                 unsafe {require(objindex == self.objindex)};
-                let cost = 1;
-                player.data.pay_balance(cost)?;
+                player.data.pay_cost()?;
                 let cards = self.data.iter().map(|x| player.data.cards[*x as usize].clone()).collect::<Vec<_>>();
                 let mut object = Object::new(cards);
                 let counter = QUEUE.0.borrow().counter;
@@ -114,8 +113,7 @@ impl Transaction {
             None => Err(ERROR_PLAYER_ALREADY_EXIST),
             Some(player) => {
                 player.check_and_inc_nonce(self.nonce);
-                let cost = 1;
-                player.data.pay_balance(cost)?;
+                player.data.pay_cost()?;
                 let counter = QUEUE.0.borrow().counter;
                 let data = &self.data.iter().map(|x| *x as usize).collect();
                 if let Some(delay) = player.data.restart_object_card(self.objindex, data, counter) {
@@ -130,32 +128,42 @@ impl Transaction {
         }
     }
 
-    pub fn withdraw(&self, pid: &[u64; 2]) -> u32 {
+    pub fn upgrade_object(&self, pid: &[u64; 2], rand: &[u64; 4]) -> Result<(), u32> {
         let mut player = AutomataPlayer::get_from_pid(pid);
         match player.as_mut() {
-            None => ERROR_PLAYER_NOT_EXIST,
+            None => Err(ERROR_PLAYER_ALREADY_EXIST),
             Some(player) => {
                 player.check_and_inc_nonce(self.nonce);
-                if let Some(treasure) = player.data.local.0.last_mut() {
-                    let amount = self.data[0] & 0xffffffff;
-                    unsafe { require(*treasure >= (amount as i64)) };
-                    *treasure -= amount as i64;
-                    let withdrawinfo = WithdrawInfo::new(&[
-                        self.data[0],
-                        self.data[1],
-                        self.data[2]
-                    ]);
-                    SettlementInfo::append_settlement(withdrawinfo);
-                    player.store();
-                } else {
-                    unreachable!();
-                }
-                0
+                player.data.pay_cost()?;
+                player.data.upgrade_object(self.objindex, rand);
+                player.store();
+                Ok(())
             }
         }
     }
 
-    pub fn deposit(&self, pid: &[u64; 2]) -> u32 {
+
+    pub fn withdraw(&self, pid: &[u64; 2]) -> Result<(), u32> {
+        let mut player = AutomataPlayer::get_from_pid(pid);
+        match player.as_mut() {
+            None => Err(ERROR_PLAYER_NOT_EXIST),
+            Some(player) => {
+                player.check_and_inc_nonce(self.nonce);
+                let amount = self.data[0] & 0xffffffff;
+                player.data.cost_balance(amount as i64)?;
+                let withdrawinfo = WithdrawInfo::new(&[
+                    self.data[0],
+                    self.data[1],
+                    self.data[2]
+                ]);
+                SettlementInfo::append_settlement(withdrawinfo);
+                player.store();
+                Ok(())
+            }
+        }
+    }
+
+    pub fn deposit(&self, pid: &[u64; 2]) -> Result<(), u32> {
         let mut admin = AutomataPlayer::get_from_pid(pid).unwrap();
         admin.check_and_inc_nonce(self.nonce);
         let mut player = AutomataPlayer::get_from_pid(&[self.data[0], self.data[1]]);
@@ -163,25 +171,16 @@ impl Transaction {
             None => {
                 let mut player = AutomataPlayer::new_from_pid([self.data[0], self.data[1]]);
                 player.check_and_inc_nonce(self.nonce);
-                if let Some (treasure) = player.data.local.0.last_mut() {
-                    *treasure += self.data[2] as i64;
-                    player.store();
-                } else {
-                    unreachable!();
-                }
+                player.data.cost_balance(-(self.data[2] as i64))?;
+                player.store();
             },
             Some(player) => {
                 player.check_and_inc_nonce(self.nonce);
-                if let Some(treasure) = player.data.local.0.last_mut() {
-                    *treasure += self.data[2] as i64;
-                    //let t = player.data.local.0.last().unwrap();
-                    player.store();
-                } else {
-                    unreachable!();
-                }
+                player.data.cost_balance(-(self.data[2] as i64))?;
+                player.store();
             }
         };
-        0 // no error occurred
+        Ok(()) // no error occurred
     }
 
     pub fn install_card(&self, pid: &[u64; 2], rand: &[u64; 4]) -> Result<(), u32> {
@@ -191,8 +190,7 @@ impl Transaction {
             Some(player) => {
                 player.check_and_inc_nonce(self.nonce);
                 let total_cards = player.data.cards.len();
-                let cost = 1;
-                player.data.pay_balance(cost as i64)?;
+                player.data.pay_cost()?;
                 player.data.generate_card(rand);
                 player.store();
                 Ok(())
@@ -202,15 +200,20 @@ impl Transaction {
 
     pub fn process(&self, pkey: &[u64; 4], rand: &[u64; 4]) -> u32 {
         let b = match self.command {
-            INSTALL_PLAYER => self.install_player(&AutomataPlayer::pkey_to_pid(&pkey)),
+            INSTALL_PLAYER => self.install_player(&AutomataPlayer::pkey_to_pid(&pkey))
+                .map_or_else(|e| e, |_| 0),
             INSTALL_OBJECT => self.install_object(&AutomataPlayer::pkey_to_pid(&pkey))
                 .map_or_else(|e| e, |_| 0),
             RESTART_OBJECT => self.restart_object(&AutomataPlayer::pkey_to_pid(&pkey))
                 .map_or_else(|e| e, |_| 0),
-            WITHDRAW => self.withdraw(&AutomataPlayer::pkey_to_pid(pkey)),
+            UPGRADE_OBJECT => self.upgrade_object(&AutomataPlayer::pkey_to_pid(&pkey), rand)
+                .map_or_else(|e| e, |_| 0),
+            WITHDRAW => self.withdraw(&AutomataPlayer::pkey_to_pid(pkey))
+                .map_or_else(|e| e, |_| 0),
             INSTALL_CARD => self.install_card(&AutomataPlayer::pkey_to_pid(pkey), rand)
                 .map_or_else(|e| e, |_| 0),
-            DEPOSIT => self.deposit(&AutomataPlayer::pkey_to_pid(pkey)),
+            DEPOSIT => self.deposit(&AutomataPlayer::pkey_to_pid(pkey))
+                .map_or_else(|e| e, |_| 0),
             _ => {
                 QUEUE.0.borrow_mut().tick();
                 0

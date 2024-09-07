@@ -1,4 +1,3 @@
-use crate::player::Attributes;
 use crate::card::Card;
 use serde::Serialize;
 pub const ENTITY_ATTRIBUTES_SIZE: usize = 4; //level speed efficiency productivity
@@ -30,6 +29,7 @@ pub fn default_local() -> [i64; LOCAL_ATTRIBUTES_SIZE] {
 }
 
 const LOCAL_RESOURCE_WEIGHT: [u64; LOCAL_ATTRIBUTES_SIZE] = [1, 1, 2, 4, 4, 32, 64, 512];
+pub const COST_INCREASE_ROUND: u32 = 5;
 
 pub fn random_modifier(current_resource: [u64; LOCAL_ATTRIBUTES_SIZE], rand: u64) -> Card {
     todo!()
@@ -40,7 +40,7 @@ lazy_static::lazy_static! {
         version: "1.0",
         object_cost_exp: 2,
         upgrade_cost_exp: 2,
-        entity_attributes: ["Level", "Enercore", "Nexium", "Swiftex"],
+        entity_attributes: ["Level", "Speed", "Efficiency", "Producitivity"],
         local_attributes: ["Engery Crystal", "Instellar Mineral", "Biomass", "Quantum Foam", "Necrodermis", "Alien Floral", "Spice Melange", "Titanium"],
     };
 }
