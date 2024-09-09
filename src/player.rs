@@ -1,7 +1,7 @@
 use std::slice::IterMut;
 use crate::MERKLE_MAP;
 use crate::card::{Card, DEFAULT_CARDS};
-use crate::config::{default_local, random_modifier};
+use crate::config::{default_local, random_modifier, INITIAL_ENERGY};
 use crate::object::Object;
 use serde::Serialize;
 use crate::Player;
@@ -28,7 +28,8 @@ impl Attributes {
 
 #[derive(Debug, Serialize)]
 pub struct PlayerData {
-    pub cost_info: u32,
+    pub energy: u16, // this is collected from the supplier
+    pub cost_info: u16,
     pub current_cost: u32,
     pub objects: Vec<Object>,
     pub local: Attributes,
@@ -38,6 +39,7 @@ pub struct PlayerData {
 impl Default for PlayerData {
     fn default() -> Self {
         Self {
+            energy: INITIAL_ENERGY,
             cost_info: COST_INCREASE_ROUND,
             current_cost: 0,
             objects: vec![],
@@ -172,7 +174,8 @@ impl StorageData for PlayerData {
             cards.push(Card::from_data(u64data));
         }
         PlayerData {
-            cost_info: (cost_info >> 32) as u32,
+            energy: ((cost_info >> 48) & 0xffff) as u16,
+            cost_info: ((cost_info >> 32) & 0xffff) as u16,
             current_cost: (cost_info & 0xffffffff) as u32,
             objects,
             local: Attributes(local),
@@ -180,7 +183,10 @@ impl StorageData for PlayerData {
         }
     }
     fn to_data(&self, data: &mut Vec<u64>) {
-        data.push(((self.cost_info as u64) << 32) + (self.current_cost as u64));
+        data.push(
+            ((self.energy as u64) << 48)
+            + ((self.cost_info as u64) << 32)
+            + (self.current_cost as u64));
         data.push(self.objects.len() as u64);
         for c in self.objects.iter() {
             c.to_data(data);

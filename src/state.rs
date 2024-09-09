@@ -1,13 +1,12 @@
 use crate::events::EventQueue;
 use crate::settlement::SettlementInfo;
-use serde::{Serialize, Serializer, ser::SerializeSeq};
 use zkwasm_rest_abi::WithdrawInfo;
+use zkwasm_rest_abi::MERKLE_MAP;
 use zkwasm_rust_sdk::require;
 use std::cell::RefCell;
 use crate::player::AutomataPlayer;
 use crate::player::Owner;
 use crate::object::Object;
-use core::slice::IterMut;
 use crate::error::*;
 
 /*
@@ -23,13 +22,6 @@ fn serialize_u64_array_as_string<S>(value: &[u64; 4], serializer: S) -> Result<S
         seq.end()
     }
 */
-
-pub struct SafeEventQueue(RefCell<EventQueue>);
-unsafe impl Sync for SafeEventQueue {}
-
-lazy_static::lazy_static! {
-    pub static ref QUEUE: SafeEventQueue = SafeEventQueue (RefCell::new(EventQueue::new()));
-}
 
 pub struct Transaction {
     pub command: u64,
@@ -98,12 +90,12 @@ impl Transaction {
                 player.data.pay_cost()?;
                 let cards = self.data.iter().map(|x| player.data.cards[*x as usize].clone()).collect::<Vec<_>>();
                 let mut object = Object::new(cards);
-                let counter = QUEUE.0.borrow().counter;
+                let counter = STATE.0.borrow().queue.counter;
                 object.start_new_modifier(0, counter);
                 let delay = object.cards[0].duration;
                 player.data.objects.push(object);
                 player.store();
-                QUEUE.0.borrow_mut().insert(self.objindex, pid, delay as usize);
+                STATE.0.borrow_mut().queue.insert(self.objindex, pid, delay as usize);
                 Ok(()) // no error occurred
             }
         }
@@ -116,12 +108,13 @@ impl Transaction {
             Some(player) => {
                 player.check_and_inc_nonce(self.nonce);
                 player.data.pay_cost()?;
-                let counter = QUEUE.0.borrow().counter;
+                let counter = STATE.0.borrow().queue.counter;
                 let data = &self.data.iter().map(|x| *x as usize).collect();
                 if let Some(delay) = player.data.restart_object_card(self.objindex, data, counter) {
-                    QUEUE
+                    STATE
                         .0
                         .borrow_mut()
+                        .queue
                         .insert(self.objindex, pid, delay);
                 }
                 player.store();
@@ -193,7 +186,6 @@ impl Transaction {
                 player.check_and_inc_nonce(self.nonce);
                 player.data.pay_cost()?;
                 player.data.generate_card(rand);
-                zkwasm_rust_sdk::dbg!("cards {}\n", {player.data.cards.len()});
                 player.store();
                 Ok(())
             }
@@ -217,29 +209,43 @@ impl Transaction {
             DEPOSIT => self.deposit(&AutomataPlayer::pkey_to_pid(pkey))
                 .map_or_else(|e| e, |_| 0),
             _ => {
-                QUEUE.0.borrow_mut().tick();
+                STATE.0.borrow_mut().queue.tick();
                 0
             }
         };
         b
     }
-
-    pub fn automaton() {
-        QUEUE.0.borrow_mut().tick();
-    }
 }
 
-pub struct State {}
+pub struct SafeState(RefCell<State>);
+unsafe impl Sync for SafeState {}
+
+lazy_static::lazy_static! {
+    pub static ref STATE: SafeState = SafeState (RefCell::new(State::new()));
+}
+
+
+
+pub struct State {
+    supplier: u64,
+    queue: EventQueue,
+}
 
 impl State {
+    pub fn new() -> Self{
+        State {
+            supplier: 1000,
+            queue: EventQueue::new()
+        }
+    }
     pub fn get_state(pid: Vec<u64>) -> String {
         let player = AutomataPlayer::get(&pid.try_into().unwrap()).unwrap();
-        let counter = QUEUE.0.borrow().counter;
+        let counter = STATE.0.borrow().queue.counter;
         serde_json::to_string(&(player, counter)).unwrap()
     }
 
     pub fn preempt() -> bool {
-        let counter = QUEUE.0.borrow().counter;
+        let counter = STATE.0.borrow().queue.counter;
         if counter % 30 == 0 {
             true
         } else {
@@ -256,9 +262,22 @@ impl State {
     }
 
     pub fn store() {
-        QUEUE.0.borrow_mut().store();
+        let state = STATE.0.borrow_mut();
+        let mut v = Vec::with_capacity(state.queue.list.len() + 10);
+        v.push(state.supplier);
+        state.queue.store(&mut v);
+        let kvpair = unsafe { &mut MERKLE_MAP };
+        kvpair.set(&[0, 0, 0, 0], v.as_slice());
+        let root = kvpair.merkle.root.clone();
+        zkwasm_rust_sdk::dbg!("root after store: {:?}\n", root);
     }
     pub fn initialize() {
-        QUEUE.0.borrow_mut().fetch();
+        let mut state = STATE.0.borrow_mut();
+        let kvpair = unsafe { &mut MERKLE_MAP };
+        let mut data = kvpair.get(&[0, 0, 0, 0]);
+        if !data.is_empty() {
+            state.supplier = data.pop().unwrap();
+            state.queue.fetch(&mut data);
+        }
     }
 }

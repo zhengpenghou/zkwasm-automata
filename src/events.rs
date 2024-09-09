@@ -1,5 +1,4 @@
 use std::collections::LinkedList;
-use zkwasm_rest_abi::MERKLE_MAP;
 use crate::player::AutomataPlayer;
 
 #[derive(Clone)]
@@ -48,26 +47,18 @@ impl EventQueue {
             list: LinkedList::new(),
         }
     }
-    pub fn store(&self) {
-        let n = self.list.len();
-        let mut v = Vec::with_capacity(n * 5 + 1);
+    pub fn store(&self, buf: &mut Vec<u64>) {
         for e in self.list.iter() {
-            e.compact(&mut v);
+            e.compact(buf);
         }
-        v.push(self.counter);
-        let kvpair = unsafe { &mut MERKLE_MAP };
-        kvpair.set(&[0, 0, 0, 0], v.as_slice());
-        let root = kvpair.merkle.root.clone();
-        zkwasm_rust_sdk::dbg!("root after store: {:?}\n", root);
+        buf.push(self.counter);
     }
-    pub fn fetch(&mut self) {
-        let kvpair = unsafe { &mut MERKLE_MAP };
-        let mut data = kvpair.get(&[0, 0, 0, 0]);
+    pub fn fetch(&mut self, data: &mut Vec<u64>) {
         if !data.is_empty() {
             let counter = data.pop().unwrap();
             let mut list = LinkedList::new();
             while !data.is_empty() {
-                list.push_back(Event::fetch(&mut data))
+                list.push_back(Event::fetch(data))
             }
             self.counter = counter;
             self.list = list;
@@ -90,10 +81,18 @@ impl EventQueue {
                 let owner_id = head.owner;
                 let object_index = head.object_index;
                 let mut player = AutomataPlayer::get_from_pid(&owner_id).unwrap();
-                let m = player.data.apply_object_card(object_index, counter);
+                let m = if player.data.energy == 0 {
+                    player.data.objects.get_mut(object_index).unwrap().halt();
+                    None
+                } else {
+                    player.data.apply_object_card(object_index, counter)
+                };
                 self.list.pop_front();
                 if let Some(delta) = m {
                     self.insert(object_index, &owner_id, delta);
+                    if player.data.objects[object_index].get_modifier_index() == 0 {
+                        player.data.energy -= 1;
+                    }
                 }
             } else {
                 head.delta -= 1;
