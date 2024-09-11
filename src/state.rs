@@ -88,11 +88,11 @@ impl Transaction {
                 let objindex = player.data.objects.len();
                 unsafe {require(objindex == self.objindex)};
                 player.data.pay_cost()?;
-                let cards = self.data.iter().map(|x| player.data.cards[*x as usize].clone()).collect::<Vec<_>>();
-                let mut object = Object::new(cards);
+                let cards = self.data.iter().map(|x| *x as u8).collect::<Vec<_>>();
+                let mut object = Object::new(cards.try_into().unwrap());
                 let counter = STATE.0.borrow().queue.counter;
                 object.start_new_modifier(0, counter);
-                let delay = object.cards[0].duration;
+                let delay = player.data.cards[object.cards[0] as usize].duration;
                 player.data.objects.push(object);
                 player.store();
                 STATE.0.borrow_mut().queue.insert(self.objindex, pid, delay as usize);
@@ -109,8 +109,10 @@ impl Transaction {
                 player.check_and_inc_nonce(self.nonce);
                 player.data.pay_cost()?;
                 let counter = STATE.0.borrow().queue.counter;
-                let data = &self.data.iter().map(|x| *x as usize).collect();
-                if let Some(delay) = player.data.restart_object_card(self.objindex, data, counter) {
+                let data = self.data.iter().map(|x| *x as u8).collect::<Vec<_>>();
+                if let Some(delay) = player
+                    .data
+                        .restart_object_card(self.objindex, data.try_into().unwrap(), counter) {
                     STATE
                         .0
                         .borrow_mut()

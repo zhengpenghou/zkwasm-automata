@@ -101,18 +101,19 @@ impl PlayerData {
         let current_index = object.get_modifier_index() as usize;
         if object.is_restarting() {
             let next_index = 0;
-            let duration = object.cards[next_index].duration;
+            let duration = self.cards[object.cards[next_index] as usize].duration;
             let object = self.objects.get_mut(object_index).unwrap();
             object.start_new_modifier(next_index, counter);
             Some(duration as usize)
         } else {
-            let applied = self.apply_modifier(&object.cards[current_index]);
+            let card = self.cards[object.cards[current_index] as usize].clone();
+            let applied = self.apply_modifier(&card);
             let object = self.objects.get_mut(object_index).unwrap();
             if applied {
                 //zkwasm_rust_sdk::dbg!("object after: {:?}\n", object);
                 //zkwasm_rust_sdk::dbg!("player after: {:?}\n", player);
                 let next_index = (current_index + 1) % object.cards.len();
-                let duration = object.cards[next_index].duration;
+                let duration = self.cards[object.cards[next_index] as usize].duration;
                 object.start_new_modifier(next_index, counter);
                 Some(duration as usize)
             } else {
@@ -122,15 +123,14 @@ impl PlayerData {
         }
     }
 
-    pub fn restart_object_card(&mut self, object_index: usize, data: &Vec<usize>, counter: u64) -> Option<usize> {
+    pub fn restart_object_card(&mut self, object_index: usize, data: [u8; 8], counter: u64) -> Option<usize> {
         let object = self.objects.get_mut(object_index).unwrap();
         let halted = object.is_halted();
         if halted {
             // modify object with new modifiers
-            let cards = data.iter().map(|x| self.cards[*x].clone()).collect::<Vec<_>>();
-            object.reset_modifier(cards);
+            object.reset_modifier(data);
             let modifier_index = object.get_modifier_index();
-            let duration = object.cards[modifier_index as usize].duration;
+            let duration = self.cards[object.cards[modifier_index as usize] as usize].duration;
             object.restart(counter);
             zkwasm_rust_sdk::dbg!("object restarted\n");
             Some(duration as usize)

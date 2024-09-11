@@ -1,7 +1,6 @@
 use std::slice::IterMut;
 use serde::{Serialize, Serializer};
 use crate::StorageData;
-use crate::card::Card;
 
 // Custom serializer for `u64` as a string.
 fn serialize_u64_as_string<S>(value: &u64, serializer: S) -> Result<S::Ok, S::Error>
@@ -15,12 +14,12 @@ S: Serializer,
 pub struct Object {
     #[serde(serialize_with="serialize_u64_as_string")]
     pub modifier_info: u64, // running << 56 + (modifier index << 48) + counter
-    pub cards: Vec<Card>, // u64 contains 8 cards
+    pub cards: [u8; 8], // u64 contains 8 cards
     pub attributes: [u16; 4], // level, speed, efficiency, productivity
 }
 
 impl Object {
-    pub fn new(cards: Vec<Card>) -> Self {
+    pub fn new(cards: [u8; 8]) -> Self {
         Self {
             cards,
             modifier_info: 0,
@@ -52,7 +51,7 @@ impl Object {
         self.modifier_info = (0u64 << 48) + counter;
     }
 
-    pub fn reset_modifier(&mut self, cards: Vec<Card>) {
+    pub fn reset_modifier(&mut self, cards: [u8; 8]) {
         self.cards = cards;
     }
 
@@ -65,11 +64,7 @@ impl StorageData for Object {
     fn from_data(u64data: &mut IterMut<u64>) -> Self {
         let modifier_info = *u64data.next().unwrap();
         let attributes = *u64data.next().unwrap();
-        let card_size = *u64data.next().unwrap();
-        let mut cards = Vec::with_capacity(card_size as usize);
-        for _ in 0..card_size {
-            cards.push(Card::from_data(u64data));
-        }
+        let card = *u64data.next().unwrap();
         Object {
             modifier_info,
             attributes: [
@@ -78,7 +73,7 @@ impl StorageData for Object {
                 ((attributes >> 32) & 0xff) as u16,
                 ((attributes >> 48) & 0xff) as u16,
             ],
-            cards,
+            cards: card.to_le_bytes(),
         }
     }
     fn to_data(&self, data: &mut Vec<u64>) {
@@ -88,9 +83,6 @@ impl StorageData for Object {
                   + ((self.attributes[1] as u64) << 32)
                   + ((self.attributes[1] as u64) << 48)
                   );
-        data.push(self.cards.len() as u64);
-        for c in self.cards.iter() {
-            c.to_data(data);
-        }
+        data.push(u64::from_le_bytes(self.cards));
     }
 }
