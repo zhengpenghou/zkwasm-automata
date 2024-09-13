@@ -100,6 +100,7 @@ impl PlayerData {
         let object = self.objects[object_index].clone();
         let current_index = object.get_modifier_index() as usize;
         if object.is_restarting() {
+            //zkwasm_rust_sdk::dbg!("is restarting !\n");
             let next_index = 0;
             let duration = self.cards[object.cards[next_index] as usize].duration;
             let object = self.objects.get_mut(object_index).unwrap();
@@ -108,10 +109,11 @@ impl PlayerData {
         } else {
             let card = self.cards[object.cards[current_index] as usize].clone();
             let applied = self.apply_modifier(&card);
+            zkwasm_rust_sdk::dbg!("applied modifier!\n");
             let object = self.objects.get_mut(object_index).unwrap();
             if applied {
                 //zkwasm_rust_sdk::dbg!("object after: {:?}\n", object);
-                //zkwasm_rust_sdk::dbg!("player after: {:?}\n", player);
+                //zkwasm_rust_sdk::dbg!("player after: {:?}\n", {&self.local});
                 let next_index = (current_index + 1) % object.cards.len();
                 let duration = self.cards[object.cards[next_index] as usize].duration;
                 object.start_new_modifier(next_index, counter);

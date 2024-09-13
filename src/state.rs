@@ -2,6 +2,7 @@ use crate::events::EventQueue;
 use crate::settlement::SettlementInfo;
 use zkwasm_rest_abi::WithdrawInfo;
 use zkwasm_rest_abi::MERKLE_MAP;
+use zkwasm_rest_abi::StorageData;
 use zkwasm_rust_sdk::require;
 use std::cell::RefCell;
 use crate::player::AutomataPlayer;
@@ -267,7 +268,7 @@ impl State {
         let state = STATE.0.borrow_mut();
         let mut v = Vec::with_capacity(state.queue.list.len() + 10);
         v.push(state.supplier);
-        state.queue.store(&mut v);
+        state.queue.to_data(&mut v);
         let kvpair = unsafe { &mut MERKLE_MAP };
         kvpair.set(&[0, 0, 0, 0], v.as_slice());
         let root = kvpair.merkle.root.clone();
@@ -278,8 +279,9 @@ impl State {
         let kvpair = unsafe { &mut MERKLE_MAP };
         let mut data = kvpair.get(&[0, 0, 0, 0]);
         if !data.is_empty() {
-            state.supplier = data.pop().unwrap();
-            state.queue.fetch(&mut data);
+            let mut data = data.iter_mut();
+            state.supplier = *data.next().unwrap();
+            state.queue = EventQueue::from_data(&mut data);
         }
     }
 }

@@ -11,7 +11,7 @@ async function main() {
   await player.deposit();
   await player.installObject(0n, [0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
   await player.installCard();
-  await player.restartObject(0n, [0n, 0n, 0n, 0n, 0n, 0n, 0n, 4n]);
+  //await player.restartObject(0n, [0n, 0n, 0n, 0n, 0n, 0n, 0n, 4n]);
   await player.upgradeObject(0n);
   let state = await player.getState();
   console.log("query state:", state);
