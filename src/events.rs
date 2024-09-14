@@ -76,8 +76,8 @@ impl EventQueue {
                     if player.data.objects[object_index].get_modifier_index() == 0 {
                         player.data.energy -= 1;
                     }
-                    player.store()
                 }
+                player.store()
             } else {
                 head.delta -= 1;
                 break;
