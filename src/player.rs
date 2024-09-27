@@ -31,6 +31,7 @@ pub struct PlayerData {
     pub energy: u16, // this is collected from the supplier
     pub cost_info: u16,
     pub current_cost: u32,
+    pub redeem_info: [u8; 8],
     pub objects: Vec<Object>,
     pub local: Attributes,
     pub cards: Vec<Card>,
@@ -42,6 +43,7 @@ impl Default for PlayerData {
             energy: INITIAL_ENERGY,
             cost_info: COST_INCREASE_ROUND,
             current_cost: 0,
+            redeem_info: [0; 8],
             objects: vec![],
             local: Attributes::default_local(),
             cards: DEFAULT_CARDS.clone(),
@@ -158,6 +160,7 @@ impl PlayerData {
 impl StorageData for PlayerData {
     fn from_data(u64data: &mut IterMut<u64>) -> Self {
         let cost_info = *u64data.next().unwrap();
+        let redeem_info = *u64data.next().unwrap();
         let objects_size = *u64data.next().unwrap();
         let mut objects = Vec::with_capacity(objects_size as usize);
         for _ in 0..objects_size {
@@ -178,6 +181,7 @@ impl StorageData for PlayerData {
         PlayerData {
             energy: ((cost_info >> 48) & 0xffff) as u16,
             cost_info: ((cost_info >> 32) & 0xffff) as u16,
+            redeem_info: redeem_info.to_le_bytes(),
             current_cost: (cost_info & 0xffffffff) as u32,
             objects,
             local: Attributes(local),
@@ -189,6 +193,9 @@ impl StorageData for PlayerData {
             ((self.energy as u64) << 48)
             + ((self.cost_info as u64) << 32)
             + (self.current_cost as u64));
+        data.push(
+            u64::from_le_bytes(self.redeem_info)
+        );
         data.push(self.objects.len() as u64);
         for c in self.objects.iter() {
             c.to_data(data);

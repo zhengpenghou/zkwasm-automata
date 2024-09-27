@@ -66,7 +66,7 @@ export class Player {
 
   async getNonce(): Promise<bigint> {
     const data = await this.getState();
-    let nonce = BigInt(data[0].nonce);
+    let nonce = BigInt(data.player.nonce);
     return nonce;
   }
 

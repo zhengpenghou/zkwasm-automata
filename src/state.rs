@@ -241,10 +241,13 @@ impl State {
             queue: EventQueue::new()
         }
     }
+    pub fn snapshot() -> String {
+        let counter = STATE.0.borrow().queue.counter;
+        serde_json::to_string(&counter).unwrap()
+    }
     pub fn get_state(pid: Vec<u64>) -> String {
         let player = AutomataPlayer::get(&pid.try_into().unwrap()).unwrap();
-        let counter = STATE.0.borrow().queue.counter;
-        serde_json::to_string(&(player, counter)).unwrap()
+        serde_json::to_string(&player).unwrap()
     }
 
     pub fn preempt() -> bool {
