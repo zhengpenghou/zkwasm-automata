@@ -63,4 +63,4 @@ node ts/node_modules/zkwasm-ts-server/src/service.js
 ```
 
 ## Provide a FrontEnd
-A demo frontend can be find at
+A demo frontend can be find at https://github.com/riddles-are-us/frontend-automata
