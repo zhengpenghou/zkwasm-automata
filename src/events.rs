@@ -189,7 +189,7 @@ impl EventQueue {
         let mut current_delta = 0u64;
         while tail.is_some() {
             let delta = tail.as_ref().unwrap().delta;
-            if delta as u64 > current_delta {
+            if delta as u64 > 0 {
                 if !store.is_empty() {
                     let mut entries = self.get_old_entries(current_delta + self.counter);
                     entries.append(&mut store);
@@ -197,7 +197,7 @@ impl EventQueue {
                     store.clear();
                 }
             }
-            current_delta = delta as u64;
+            current_delta += delta as u64;
             tail.as_ref().unwrap().to_data(&mut store);
             tail = self.list.pop_front();
         }
