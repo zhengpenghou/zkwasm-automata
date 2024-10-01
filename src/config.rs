@@ -57,14 +57,14 @@ pub fn random_modifier(current_resource: [i64; LOCAL_ATTRIBUTES_SIZE], rand: u64
         + current_resource[input3]
         + current_resource[input4];
     let cost = inputs.map(
-        |x| weight * (distribute as u64) / (LOCAL_RESOURCE_WEIGHT[x] + (current_resource[x] as u64)) + 1);
+        |x| weight * (current_resource[x] as u64) / (LOCAL_RESOURCE_WEIGHT[x] * (distribute as u64) + 1));
     let mut attrs = [0i64; 8];
-    attrs[inputs[0] as usize] += cost[0] as i64;
-    attrs[inputs[1] as usize] += cost[1] as i64;
-    attrs[inputs[2] as usize] += cost[2] as i64;
-    attrs[inputs[3] as usize] += cost[3] as i64;
-    attrs[output1 as usize ] -= cost1 as i64;
-    attrs[output2 as usize] -= cost2 as i64;
+    attrs[inputs[0] as usize] -= cost[0] as i64;
+    attrs[inputs[1] as usize] -= cost[1] as i64;
+    attrs[inputs[2] as usize] -= cost[2] as i64;
+    attrs[inputs[3] as usize] -= cost[3] as i64;
+    attrs[output1 as usize ] += cost1 as i64;
+    attrs[output2 as usize] += cost2 as i64;
     let attrs = attrs.map(|x| {
         if x > 64 {
             64 as i8
