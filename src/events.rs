@@ -86,7 +86,6 @@ impl EventQueue {
                 zkwasm_rust_sdk::dbg!("apply object card\n");
                 player.data.apply_object_card(object_index, counter)
             };
-            self.list.pop_front();
             if let Some(delta) = m {
                 self.insert(object_index, &owner_id, delta);
                 if player.data.objects[object_index].get_modifier_index() == 0 {
