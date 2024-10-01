@@ -9,6 +9,7 @@ use crate::player::AutomataPlayer;
 use crate::player::Owner;
 use crate::object::Object;
 use crate::error::*;
+use crate::config::CONFIG;
 
 /*
 // Custom serializer for `[u64; 4]` as a [String; 4].
@@ -38,6 +39,7 @@ const UPGRADE_OBJECT: u64 = 4;
 const INSTALL_CARD: u64 = 5;
 const WITHDRAW: u64 = 6;
 const DEPOSIT: u64 = 7;
+const BOUNTY: u64 = 8;
 
 impl Transaction {
     pub fn decode_error(e: u32) -> &'static str {
@@ -45,6 +47,8 @@ impl Transaction {
            ERROR_PLAYER_NOT_EXIST => "PlayerNotExist",
            ERROR_PLAYER_ALREADY_EXIST => "PlayerAlreadyExist",
            ERROR_NOT_ENOUGH_BALANCE => "NotEnoughBalance",
+           ERROR_INDEX_OUT_OF_BOUND => "IndexOutofBound",
+           ERROR_NOT_ENOUGH_RESOURCE => "NotEnoughResource",
            _ => "Unknown"
         }
     }
@@ -61,7 +65,10 @@ impl Transaction {
             }
         } else if command == DEPOSIT {
             data = vec![params[1], params[2], params[3]] // pkey[0], pkey[1], amount
+        } else if command == BOUNTY {
+            data = vec![params[1]] // pkey[0], pkey[1], amount
         };
+
         Transaction {
             command,
             objindex,
@@ -140,6 +147,31 @@ impl Transaction {
         }
     }
 
+    pub fn bounty(&self, pid: &[u64; 2]) -> Result<(), u32> {
+        let mut player = AutomataPlayer::get_from_pid(pid);
+        match player.as_mut() {
+            None => Err(ERROR_PLAYER_ALREADY_EXIST),
+            Some(player) => {
+                player.check_and_inc_nonce(self.nonce);
+                if let Some(v) = player.data.local.0.get(self.data[0] as usize) {
+                    let redeem_info = player.data.redeem_info[self.data[0] as usize];
+                    let cost = CONFIG.get_bounty_cost(redeem_info as u64);
+                    if *v > cost as i64 {
+                        player.data.local.0[self.data[0] as usize] = v - (cost as i64);
+                        player.data.redeem_info[self.data[0] as usize] += 1;
+                        let reward = CONFIG.get_bounty_reward(redeem_info as u64);
+                        player.data.cost_balance(-(reward as i64))?;
+                        player.store();
+                        Ok(())
+                    } else {
+                        Err(ERROR_NOT_ENOUGH_RESOURCE)
+                    }
+                } else {
+                    Err(ERROR_INDEX_OUT_OF_BOUND)
+                }
+            }
+        }
+    }
 
     pub fn withdraw(&self, pid: &[u64; 2]) -> Result<(), u32> {
         let mut player = AutomataPlayer::get_from_pid(pid);
@@ -211,6 +243,9 @@ impl Transaction {
                 .map_or_else(|e| e, |_| 0),
             DEPOSIT => self.deposit(&AutomataPlayer::pkey_to_pid(pkey))
                 .map_or_else(|e| e, |_| 0),
+            BOUNTY => self.bounty(&AutomataPlayer::pkey_to_pid(pkey))
+                .map_or_else(|e| e, |_| 0),
+
             _ => {
                 STATE.0.borrow_mut().queue.tick();
                 0
@@ -268,12 +303,13 @@ impl State {
     }
 
     pub fn store() {
-        let state = STATE.0.borrow_mut();
+        let mut state = STATE.0.borrow_mut();
         let mut v = Vec::with_capacity(state.queue.list.len() + 10);
         v.push(state.supplier);
         state.queue.to_data(&mut v);
         let kvpair = unsafe { &mut MERKLE_MAP };
         kvpair.set(&[0, 0, 0, 0], v.as_slice());
+        state.queue.store();
         let root = kvpair.merkle.root.clone();
         zkwasm_rust_sdk::dbg!("root after store: {:?}\n", root);
     }
