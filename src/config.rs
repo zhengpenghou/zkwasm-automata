@@ -113,7 +113,7 @@ impl Config {
     }
 
     pub fn get_bounty_cost(&self, redeem_info: u64) -> u64 {
-        let mut cost = 10;
+        let mut cost = 20;
         for _ in 0..redeem_info {
             cost = self.bounty_cost_base * cost
         }
