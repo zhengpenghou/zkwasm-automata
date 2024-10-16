@@ -139,6 +139,7 @@ impl PlayerData {
             zkwasm_rust_sdk::dbg!("object restarted\n");
             Some(duration as usize)
         } else {
+            object.reset_modifier(data);
             object.reset_halt_bit_to_restart();
             None
         }
