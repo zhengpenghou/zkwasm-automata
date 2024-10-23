@@ -65,6 +65,8 @@ impl Transaction {
             }
         } else if command == DEPOSIT {
             data = vec![params[1], params[2], params[3]] // pkey[0], pkey[1], amount
+        } else if command == UPGRADE_OBJECT {
+            data = vec![params[1]] // pkey[0], pkey[1], amount
         } else if command == BOUNTY {
             data = vec![params[1]] // pkey[0], pkey[1], amount
         };
@@ -133,14 +135,14 @@ impl Transaction {
         }
     }
 
-    pub fn upgrade_object(&self, pid: &[u64; 2], rand: &[u64; 4]) -> Result<(), u32> {
+    pub fn upgrade_object(&self, pid: &[u64; 2]) -> Result<(), u32> {
         let mut player = AutomataPlayer::get_from_pid(pid);
         match player.as_mut() {
             None => Err(ERROR_PLAYER_ALREADY_EXIST),
             Some(player) => {
                 player.check_and_inc_nonce(self.nonce);
                 player.data.pay_cost()?;
-                player.data.upgrade_object(self.objindex, rand);
+                player.data.upgrade_object(self.objindex, self.data[0]);
                 player.store();
                 Ok(())
             }
@@ -235,7 +237,7 @@ impl Transaction {
                 .map_or_else(|e| e, |_| 0),
             RESTART_OBJECT => self.restart_object(&AutomataPlayer::pkey_to_pid(&pkey))
                 .map_or_else(|e| e, |_| 0),
-            UPGRADE_OBJECT => self.upgrade_object(&AutomataPlayer::pkey_to_pid(&pkey), rand)
+            UPGRADE_OBJECT => self.upgrade_object(&AutomataPlayer::pkey_to_pid(&pkey))
                 .map_or_else(|e| e, |_| 0),
             WITHDRAW => self.withdraw(&AutomataPlayer::pkey_to_pid(pkey))
                 .map_or_else(|e| e, |_| 0),

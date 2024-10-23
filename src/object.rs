@@ -80,8 +80,8 @@ impl StorageData for Object {
         data.push(self.modifier_info);
         data.push(self.attributes[0] as u64
                   + ((self.attributes[1] as u64) << 16)
-                  + ((self.attributes[1] as u64) << 32)
-                  + ((self.attributes[1] as u64) << 48)
+                  + ((self.attributes[2] as u64) << 32)
+                  + ((self.attributes[3] as u64) << 48)
                   );
         data.push(u64::from_le_bytes(self.cards));
     }
