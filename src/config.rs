@@ -22,8 +22,8 @@ pub fn default_entities(index: usize) -> [i64; ENTITY_ATTRIBUTES_SIZE] {
         [0, 0, 0, 0]
     } else {
         let mut v = [0, 0, 0, 0];
-        for i in 0..index-2 {
-            v[i%3 + 1] += 1
+        for i in 0..index - 2 {
+            v[i % 3 + 1] += 1
         }
         v
     }
@@ -56,14 +56,15 @@ pub fn random_modifier(current_resource: [i64; LOCAL_ATTRIBUTES_SIZE], rand: u64
         + current_resource[input2]
         + current_resource[input3]
         + current_resource[input4];
-    let cost = inputs.map(
-        |x| weight * (current_resource[x] as u64) / (LOCAL_RESOURCE_WEIGHT[x] * (distribute as u64) + 1));
+    let cost = inputs.map(|x| {
+        weight * (current_resource[x] as u64) / (LOCAL_RESOURCE_WEIGHT[x] * (distribute as u64) + 1)
+    });
     let mut attrs = [0i64; 8];
     attrs[inputs[0] as usize] -= cost[0] as i64;
     attrs[inputs[1] as usize] -= cost[1] as i64;
     attrs[inputs[2] as usize] -= cost[2] as i64;
     attrs[inputs[3] as usize] -= cost[3] as i64;
-    attrs[output1 as usize ] += cost1 as i64;
+    attrs[output1 as usize] += cost1 as i64;
     attrs[output2 as usize] += cost2 as i64;
     let attrs = attrs.map(|x| {
         if x > 64 {
@@ -82,15 +83,11 @@ pub fn random_modifier(current_resource: [i64; LOCAL_ATTRIBUTES_SIZE], rand: u64
     weight += 5;
     zkwasm_rust_sdk::dbg!("random modifier weight {}\n", weight);
 
-    let duration = if weight < 0 {
-        15
-    } else {
-        weight * 40 + 15
-    };
+    let duration = if weight < 0 { 15 } else { weight * 40 + 15 };
 
     Card {
         duration: duration as u64,
-        attributes: attrs
+        attributes: attrs,
     }
 }
 
@@ -117,10 +114,10 @@ impl Config {
         for _ in 0..redeem_info {
             cost = self.bounty_cost_base * cost
         }
-        return cost
+        return cost;
     }
 
     pub fn get_bounty_reward(&self, redeem_info: u64) -> u64 {
-        return self.bounty_reward_base * (redeem_info + 1)
+        return self.bounty_reward_base * (redeem_info + 1);
     }
 }

@@ -1,13 +1,13 @@
-use std::slice::IterMut;
-use crate::MERKLE_MAP;
 use crate::card::{Card, DEFAULT_CARDS};
+use crate::config::COST_INCREASE_ROUND;
 use crate::config::{default_local, random_modifier, INITIAL_ENERGY};
+use crate::error::ERROR_NOT_ENOUGH_BALANCE;
 use crate::object::Object;
-use serde::Serialize;
 use crate::Player;
 use crate::StorageData;
-use crate::config::COST_INCREASE_ROUND;
-use crate::error::ERROR_NOT_ENOUGH_BALANCE;
+use crate::MERKLE_MAP;
+use serde::Serialize;
+use std::slice::IterMut;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Attributes(pub Vec<i64>);
@@ -63,7 +63,7 @@ impl PlayerData {
         self.cards.push(new_card)
     }
 
-    pub fn pay_cost(&mut self) -> Result <(), u32> {
+    pub fn pay_cost(&mut self) -> Result<(), u32> {
         self.cost_balance(self.current_cost as i64)?;
         self.cost_info -= 1;
         if self.cost_info == 0 {
@@ -77,7 +77,7 @@ impl PlayerData {
         Ok(())
     }
 
-    pub fn cost_balance(&mut self, b: i64) -> Result <(), u32> {
+    pub fn cost_balance(&mut self, b: i64) -> Result<(), u32> {
         if let Some(treasure) = self.local.0.last_mut() {
             if *treasure >= b {
                 *treasure -= b;
@@ -92,11 +92,11 @@ impl PlayerData {
 
     pub fn upgrade_object(&mut self, object_index: usize, index: u64) {
         let object = self.objects.get_mut(object_index).unwrap();
-        unsafe { zkwasm_rust_sdk::require(object.attributes[0]<128) };
+        unsafe { zkwasm_rust_sdk::require(object.attributes[0] < 128) };
         zkwasm_rust_sdk::dbg!("upgrading object {}\n", index);
         object.attributes[0] += 2;
         object.attributes[index as usize] += 2;
-        zkwasm_rust_sdk::dbg!("upgrading object {:?}\n", {object.attributes});
+        zkwasm_rust_sdk::dbg!("upgrading object {:?}\n", { object.attributes });
     }
 
     pub fn apply_object_card(&mut self, object_index: usize, counter: u64) -> Option<usize> {
@@ -128,7 +128,12 @@ impl PlayerData {
         }
     }
 
-    pub fn restart_object_card(&mut self, object_index: usize, data: [u8; 8], counter: u64) -> Option<usize> {
+    pub fn restart_object_card(
+        &mut self,
+        object_index: usize,
+        data: [u8; 8],
+        counter: u64,
+    ) -> Option<usize> {
         let object = self.objects.get_mut(object_index).unwrap();
         let halted = object.is_halted();
         if halted {
@@ -193,11 +198,10 @@ impl StorageData for PlayerData {
     fn to_data(&self, data: &mut Vec<u64>) {
         data.push(
             ((self.energy as u64) << 48)
-            + ((self.cost_info as u64) << 32)
-            + (self.current_cost as u64));
-        data.push(
-            u64::from_le_bytes(self.redeem_info)
+                + ((self.cost_info as u64) << 32)
+                + (self.current_cost as u64),
         );
+        data.push(u64::from_le_bytes(self.redeem_info));
         data.push(self.objects.len() as u64);
         for c in self.objects.iter() {
             c.to_data(data);
@@ -238,5 +242,3 @@ impl Owner for AutomataPlayer {
         Self::get_from_pid(&Self::pkey_to_pid(pkey))
     }
 }
-
-

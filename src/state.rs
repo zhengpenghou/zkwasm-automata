@@ -1,15 +1,15 @@
+use crate::config::CONFIG;
+use crate::error::*;
 use crate::events::EventQueue;
-use crate::settlement::SettlementInfo;
-use zkwasm_rest_abi::WithdrawInfo;
-use zkwasm_rest_abi::MERKLE_MAP;
-use zkwasm_rest_abi::StorageData;
-use zkwasm_rust_sdk::require;
-use std::cell::RefCell;
+use crate::object::Object;
 use crate::player::AutomataPlayer;
 use crate::player::Owner;
-use crate::object::Object;
-use crate::error::*;
-use crate::config::CONFIG;
+use crate::settlement::SettlementInfo;
+use std::cell::RefCell;
+use zkwasm_rest_abi::StorageData;
+use zkwasm_rest_abi::WithdrawInfo;
+use zkwasm_rest_abi::MERKLE_MAP;
+use zkwasm_rust_sdk::require;
 
 /*
 // Custom serializer for `[u64; 4]` as a [String; 4].
@@ -44,12 +44,12 @@ const BOUNTY: u64 = 8;
 impl Transaction {
     pub fn decode_error(e: u32) -> &'static str {
         match e {
-           ERROR_PLAYER_NOT_EXIST => "PlayerNotExist",
-           ERROR_PLAYER_ALREADY_EXIST => "PlayerAlreadyExist",
-           ERROR_NOT_ENOUGH_BALANCE => "NotEnoughBalance",
-           ERROR_INDEX_OUT_OF_BOUND => "IndexOutofBound",
-           ERROR_NOT_ENOUGH_RESOURCE => "NotEnoughResource",
-           _ => "Unknown"
+            ERROR_PLAYER_NOT_EXIST => "PlayerNotExist",
+            ERROR_PLAYER_ALREADY_EXIST => "PlayerAlreadyExist",
+            ERROR_NOT_ENOUGH_BALANCE => "NotEnoughBalance",
+            ERROR_INDEX_OUT_OF_BOUND => "IndexOutofBound",
+            ERROR_NOT_ENOUGH_RESOURCE => "NotEnoughResource",
+            _ => "Unknown",
         }
     }
     pub fn decode(params: [u64; 4]) -> Self {
@@ -96,7 +96,7 @@ impl Transaction {
             Some(player) => {
                 player.check_and_inc_nonce(self.nonce);
                 let objindex = player.data.objects.len();
-                unsafe {require(objindex == self.objindex)};
+                unsafe { require(objindex == self.objindex) };
                 player.data.pay_cost()?;
                 let cards = self.data.iter().map(|x| *x as u8).collect::<Vec<_>>();
                 let mut object = Object::new(cards.try_into().unwrap());
@@ -105,7 +105,11 @@ impl Transaction {
                 let delay = player.data.cards[object.cards[0] as usize].duration;
                 player.data.objects.push(object);
                 player.store();
-                STATE.0.borrow_mut().queue.insert(self.objindex, pid, delay as usize);
+                STATE
+                    .0
+                    .borrow_mut()
+                    .queue
+                    .insert(self.objindex, pid, delay as usize);
                 Ok(()) // no error occurred
             }
         }
@@ -120,14 +124,12 @@ impl Transaction {
                 player.data.pay_cost()?;
                 let counter = STATE.0.borrow().queue.counter;
                 let data = self.data.iter().map(|x| *x as u8).collect::<Vec<_>>();
-                if let Some(delay) = player
-                    .data
-                        .restart_object_card(self.objindex, data.try_into().unwrap(), counter) {
-                    STATE
-                        .0
-                        .borrow_mut()
-                        .queue
-                        .insert(self.objindex, pid, delay);
+                if let Some(delay) = player.data.restart_object_card(
+                    self.objindex,
+                    data.try_into().unwrap(),
+                    counter,
+                ) {
+                    STATE.0.borrow_mut().queue.insert(self.objindex, pid, delay);
                 }
                 player.store();
                 Ok(())
@@ -183,11 +185,7 @@ impl Transaction {
                 player.check_and_inc_nonce(self.nonce);
                 let amount = self.data[0] & 0xffffffff;
                 player.data.cost_balance(amount as i64)?;
-                let withdrawinfo = WithdrawInfo::new(&[
-                    self.data[0],
-                    self.data[1],
-                    self.data[2]
-                ]);
+                let withdrawinfo = WithdrawInfo::new(&[self.data[0], self.data[1], self.data[2]]);
                 SettlementInfo::append_settlement(withdrawinfo);
                 player.store();
                 Ok(())
@@ -205,7 +203,7 @@ impl Transaction {
                 player.check_and_inc_nonce(self.nonce);
                 player.data.cost_balance(-(self.data[2] as i64))?;
                 player.store();
-            },
+            }
             Some(player) => {
                 player.check_and_inc_nonce(self.nonce);
                 player.data.cost_balance(-(self.data[2] as i64))?;
@@ -231,21 +229,29 @@ impl Transaction {
 
     pub fn process(&self, pkey: &[u64; 4], rand: &[u64; 4]) -> u32 {
         let b = match self.command {
-            INSTALL_PLAYER => self.install_player(&AutomataPlayer::pkey_to_pid(&pkey))
+            INSTALL_PLAYER => self
+                .install_player(&AutomataPlayer::pkey_to_pid(&pkey))
                 .map_or_else(|e| e, |_| 0),
-            INSTALL_OBJECT => self.install_object(&AutomataPlayer::pkey_to_pid(&pkey))
+            INSTALL_OBJECT => self
+                .install_object(&AutomataPlayer::pkey_to_pid(&pkey))
                 .map_or_else(|e| e, |_| 0),
-            RESTART_OBJECT => self.restart_object(&AutomataPlayer::pkey_to_pid(&pkey))
+            RESTART_OBJECT => self
+                .restart_object(&AutomataPlayer::pkey_to_pid(&pkey))
                 .map_or_else(|e| e, |_| 0),
-            UPGRADE_OBJECT => self.upgrade_object(&AutomataPlayer::pkey_to_pid(&pkey))
+            UPGRADE_OBJECT => self
+                .upgrade_object(&AutomataPlayer::pkey_to_pid(&pkey))
                 .map_or_else(|e| e, |_| 0),
-            WITHDRAW => self.withdraw(&AutomataPlayer::pkey_to_pid(pkey))
+            WITHDRAW => self
+                .withdraw(&AutomataPlayer::pkey_to_pid(pkey))
                 .map_or_else(|e| e, |_| 0),
-            INSTALL_CARD => self.install_card(&AutomataPlayer::pkey_to_pid(pkey), rand)
+            INSTALL_CARD => self
+                .install_card(&AutomataPlayer::pkey_to_pid(pkey), rand)
                 .map_or_else(|e| e, |_| 0),
-            DEPOSIT => self.deposit(&AutomataPlayer::pkey_to_pid(pkey))
+            DEPOSIT => self
+                .deposit(&AutomataPlayer::pkey_to_pid(pkey))
                 .map_or_else(|e| e, |_| 0),
-            BOUNTY => self.bounty(&AutomataPlayer::pkey_to_pid(pkey))
+            BOUNTY => self
+                .bounty(&AutomataPlayer::pkey_to_pid(pkey))
                 .map_or_else(|e| e, |_| 0),
 
             _ => {
@@ -264,18 +270,16 @@ lazy_static::lazy_static! {
     pub static ref STATE: SafeState = SafeState (RefCell::new(State::new()));
 }
 
-
-
 pub struct State {
     supplier: u64,
     queue: EventQueue,
 }
 
 impl State {
-    pub fn new() -> Self{
+    pub fn new() -> Self {
         State {
             supplier: 1000,
-            queue: EventQueue::new()
+            queue: EventQueue::new(),
         }
     }
     pub fn snapshot() -> String {

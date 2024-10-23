@@ -1,19 +1,19 @@
-use std::slice::IterMut;
-use zkwasm_rest_abi::StorageData;
 use crate::config::LOCAL_ATTRIBUTES_SIZE;
 use serde::Serialize;
+use std::slice::IterMut;
+use zkwasm_rest_abi::StorageData;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Card {
     pub duration: u64,
-    pub attributes: [i8;8]
+    pub attributes: [i8; 8],
 }
 
 impl Card {
     fn new(duration: u64, attributes: [i8; LOCAL_ATTRIBUTES_SIZE]) -> Self {
         Card {
             duration,
-            attributes
+            attributes,
         }
     }
 }
@@ -47,4 +47,3 @@ lazy_static::lazy_static! {
         "CrystaBloom",
     ];
 }
-

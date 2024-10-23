@@ -1,6 +1,6 @@
-use std::collections::LinkedList;
 use crate::player::AutomataPlayer;
 use core::slice::IterMut;
+use std::collections::LinkedList;
 use zkwasm_rest_abi::StorageData;
 use zkwasm_rest_abi::MERKLE_MAP;
 
@@ -15,16 +15,11 @@ impl StorageData for Event {
     fn to_data(&self, buf: &mut Vec<u64>) {
         buf.push(self.owner[0]);
         buf.push(self.owner[1]);
-        buf.push(
-            ((self.object_index as u64) << 32) | self.delta as u64
-        );
+        buf.push(((self.object_index as u64) << 32) | self.delta as u64);
         zkwasm_rust_sdk::dbg!("compact {:?}", buf);
     }
     fn from_data(u64data: &mut IterMut<u64>) -> Event {
-        let owner = [
-            *u64data.next().unwrap(),
-            *u64data.next().unwrap(),
-        ];
+        let owner = [*u64data.next().unwrap(), *u64data.next().unwrap()];
         let f = *u64data.next().unwrap();
         Event {
             owner,
@@ -71,9 +66,10 @@ impl EventQueue {
         let mut entries = Vec::with_capacity(entries_nb);
         for _ in 0..entries_nb {
             entries.push(Event::from_data(&mut dataiter));
-
         }
-        zkwasm_rust_sdk::dbg!("entries from storage: {} at counter {}\n", entries_nb, {self.counter});
+        zkwasm_rust_sdk::dbg!("entries from storage: {} at counter {}\n", entries_nb, {
+            self.counter
+        });
         // perform activities from existing entries
         for e in entries {
             let owner_id = e.owner;
@@ -123,12 +119,7 @@ impl EventQueue {
         self.counter += 1;
     }
 
-    pub fn insert(
-        &mut self,
-        object_index: usize,
-        owner: &[u64; 2],
-        delta: usize,
-    ) {
+    pub fn insert(&mut self, object_index: usize, owner: &[u64; 2], delta: usize) {
         let mut delta = delta;
         let mut list = LinkedList::new();
         let mut tail = self.list.pop_front();
@@ -161,16 +152,13 @@ impl StorageData for EventQueue {
     }
 
     fn from_data(u64data: &mut IterMut<u64>) -> Self {
-      let counter = *u64data.next().unwrap();
-      let list = LinkedList::new();
-      EventQueue {
-          counter,
-          list
-      }
+        let counter = *u64data.next().unwrap();
+        let list = LinkedList::new();
+        EventQueue { counter, list }
     }
 }
 
-const EVENTS_LEAF_INDEX:u64 = 0xfffffffe;
+const EVENTS_LEAF_INDEX: u64 = 0xfffffffe;
 
 impl EventQueue {
     fn get_old_entries(&self, counter: u64) -> Vec<u64> {
@@ -179,8 +167,11 @@ impl EventQueue {
     }
     fn set_entries(&self, entries: &Vec<u64>, counter: u64) {
         let kvpair = unsafe { &mut MERKLE_MAP };
-        kvpair.set(&[EVENTS_LEAF_INDEX, counter & 0xfffffff, 0, EVENTS_LEAF_INDEX], entries.as_slice());
-        zkwasm_rust_sdk::dbg!("store {} entries at counter {}", {entries.len()}, counter);
+        kvpair.set(
+            &[EVENTS_LEAF_INDEX, counter & 0xfffffff, 0, EVENTS_LEAF_INDEX],
+            entries.as_slice(),
+        );
+        zkwasm_rust_sdk::dbg!("store {} entries at counter {}", { entries.len() }, counter);
     }
     pub fn store(&mut self) {
         let mut tail = self.list.pop_front();
@@ -201,10 +192,10 @@ impl EventQueue {
             tail = self.list.pop_front();
         }
         if !store.is_empty() {
-           let mut entries = self.get_old_entries(current_delta + self.counter);
-           entries.append(&mut store);
-           self.set_entries(&entries, current_delta + self.counter);
-           store.clear();
+            let mut entries = self.get_old_entries(current_delta + self.counter);
+            entries.append(&mut store);
+            self.set_entries(&entries, current_delta + self.counter);
+            store.clear();
         }
     }
 }
