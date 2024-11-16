@@ -1,6 +1,6 @@
 use crate::config::CONFIG;
 use crate::error::*;
-use crate::events::EventQueue;
+use crate::events::{EventQueue, Event};
 use crate::object::Object;
 use crate::player::AutomataPlayer;
 use crate::player::Owner;
@@ -109,7 +109,11 @@ impl Transaction {
                     .0
                     .borrow_mut()
                     .queue
-                    .insert(self.objindex, pid, delay as usize);
+                    .insert(Event {
+                        object_index:self.objindex,
+                        owner: *pid,
+                        delta: delay as usize
+                    });
                 Ok(()) // no error occurred
             }
         }
@@ -129,7 +133,11 @@ impl Transaction {
                     data.try_into().unwrap(),
                     counter,
                 ) {
-                    STATE.0.borrow_mut().queue.insert(self.objindex, pid, delay);
+                    STATE.0.borrow_mut().queue.insert(Event {
+                        object_index: self.objindex,
+                        owner: *pid,
+                        delta: delay
+                    });
                 }
                 player.store();
                 Ok(())
@@ -272,7 +280,7 @@ lazy_static::lazy_static! {
 
 pub struct State {
     supplier: u64,
-    queue: EventQueue,
+    queue: EventQueue<Event>,
 }
 
 impl State {

@@ -1,3 +1,4 @@
+#![feature(linked_list_cursors)]
 use wasm_bindgen::prelude::*;
 use zkwasm_rest_abi::*;
 pub mod card;
