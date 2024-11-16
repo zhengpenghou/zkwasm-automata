@@ -3,6 +3,7 @@ use wasm_bindgen::prelude::*;
 use zkwasm_rest_abi::*;
 pub mod card;
 pub mod config;
+pub mod convention;
 pub mod error;
 pub mod events;
 pub mod object;

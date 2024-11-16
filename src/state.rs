@@ -1,6 +1,7 @@
 use crate::config::CONFIG;
+use crate::convention::EventQueue;
 use crate::error::*;
-use crate::events::{EventQueue, Event};
+use crate::events::Event;
 use crate::object::Object;
 use crate::player::AutomataPlayer;
 use crate::player::Owner;
@@ -105,15 +106,11 @@ impl Transaction {
                 let delay = player.data.cards[object.cards[0] as usize].duration;
                 player.data.objects.push(object);
                 player.store();
-                STATE
-                    .0
-                    .borrow_mut()
-                    .queue
-                    .insert(Event {
-                        object_index:self.objindex,
-                        owner: *pid,
-                        delta: delay as usize
-                    });
+                STATE.0.borrow_mut().queue.insert(Event {
+                    object_index: self.objindex,
+                    owner: *pid,
+                    delta: delay as usize,
+                });
                 Ok(()) // no error occurred
             }
         }
@@ -136,7 +133,7 @@ impl Transaction {
                     STATE.0.borrow_mut().queue.insert(Event {
                         object_index: self.objindex,
                         owner: *pid,
-                        delta: delay
+                        delta: delay,
                     });
                 }
                 player.store();
