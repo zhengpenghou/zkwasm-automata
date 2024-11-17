@@ -13,7 +13,6 @@ lazy_static::lazy_static! {
     };
 }
 
-
 #[derive(Serialize, Clone)]
 pub struct Config {
     version: &'static str,

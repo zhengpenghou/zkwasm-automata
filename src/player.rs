@@ -74,6 +74,12 @@ impl PlayerData {
                 self.current_cost = 1;
             }
         }
+        let energy = (self.energy as u32) + 20;
+        if energy > 0xffff {
+            self.energy = 0xffff
+        } else {
+            self.energy += 20;
+        }
         Ok(())
     }
 

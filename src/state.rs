@@ -1,16 +1,16 @@
+use crate::config::ADMIN_PUBKEY;
 use crate::config::CONFIG;
-use crate::convention::EventQueue;
 use crate::error::*;
 use crate::events::Event;
 use crate::object::Object;
 use crate::player::AutomataPlayer;
 use crate::player::Owner;
-use crate::settlement::SettlementInfo;
 use std::cell::RefCell;
-use crate::config::ADMIN_PUBKEY;
 use zkwasm_rest_abi::StorageData;
 use zkwasm_rest_abi::WithdrawInfo;
 use zkwasm_rest_abi::MERKLE_MAP;
+use zkwasm_rest_convention::EventQueue;
+use zkwasm_rest_convention::SettlementInfo;
 use zkwasm_rust_sdk::require;
 
 /*
@@ -191,7 +191,8 @@ impl Transaction {
                 player.check_and_inc_nonce(self.nonce);
                 let amount = self.data[0] & 0xffffffff;
                 player.data.cost_balance(amount as i64)?;
-                let withdrawinfo = WithdrawInfo::new(&[self.data[0], self.data[1], self.data[2]]);
+                let withdrawinfo =
+                    WithdrawInfo::new(&[self.data[0], self.data[1], self.data[2]], 0);
                 SettlementInfo::append_settlement(withdrawinfo);
                 player.store();
                 Ok(())

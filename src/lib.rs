@@ -3,12 +3,10 @@ use wasm_bindgen::prelude::*;
 use zkwasm_rest_abi::*;
 pub mod card;
 pub mod config;
-pub mod convention;
 pub mod error;
 pub mod events;
 pub mod object;
 pub mod player;
-pub mod settlement;
 pub mod state;
 
 use crate::config::Config;

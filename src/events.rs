@@ -1,7 +1,7 @@
-use crate::convention::EventHandler;
 use crate::player::AutomataPlayer;
 use core::slice::IterMut;
 use zkwasm_rest_abi::StorageData;
+use zkwasm_rest_convention::EventHandler;
 
 #[derive(Clone)]
 pub struct Event {
@@ -15,7 +15,6 @@ impl StorageData for Event {
         buf.push(self.owner[0]);
         buf.push(self.owner[1]);
         buf.push(((self.object_index as u64) << 32) | self.delta as u64);
-        zkwasm_rust_sdk::dbg!("compact {:?}", buf);
     }
     fn from_data(u64data: &mut IterMut<u64>) -> Event {
         let owner = [*u64data.next().unwrap(), *u64data.next().unwrap()];
