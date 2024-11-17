@@ -7,6 +7,7 @@ use crate::player::AutomataPlayer;
 use crate::player::Owner;
 use crate::settlement::SettlementInfo;
 use std::cell::RefCell;
+use crate::config::ADMIN_PUBKEY;
 use zkwasm_rest_abi::StorageData;
 use zkwasm_rest_abi::WithdrawInfo;
 use zkwasm_rest_abi::MERKLE_MAP;
@@ -260,6 +261,8 @@ impl Transaction {
                 .map_or_else(|e| e, |_| 0),
 
             _ => {
+                unsafe { require(*pkey == *ADMIN_PUBKEY) };
+                //zkwasm_rust_sdk::dbg!("admin {:?}\n", {*ADMIN_PUBKEY});
                 STATE.0.borrow_mut().queue.tick();
                 0
             }

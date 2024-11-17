@@ -68,20 +68,22 @@ impl<E: EventHandler> EventQueue<E> {
     }
 
     pub fn insert(&mut self, node: E) {
-        let mut delta = node.get_delta();
+        let mut event = node.clone();
         let mut cursor = self.list.cursor_front_mut();
-        while cursor.current().is_some() && cursor.current().as_ref().unwrap().get_delta() <= delta
+        while cursor.current().is_some()
+            && cursor.current().as_ref().unwrap().get_delta() <= event.get_delta()
         {
-            delta = delta - cursor.current().as_ref().unwrap().get_delta();
+            event.progress(cursor.current().as_ref().unwrap().get_delta());
             cursor.move_next();
         }
         match cursor.current() {
             Some(t) => {
-                t.progress(delta);
+                t.progress(event.get_delta());
             }
             None => (),
         };
-        cursor.insert_before(node);
+
+        cursor.insert_before(event);
     }
 }
 
