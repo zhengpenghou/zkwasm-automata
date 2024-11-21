@@ -254,9 +254,11 @@ impl Transaction {
             INSTALL_CARD => self
                 .install_card(&AutomataPlayer::pkey_to_pid(pkey), rand)
                 .map_or_else(|e| e, |_| 0),
-            DEPOSIT => self
-                .deposit(&AutomataPlayer::pkey_to_pid(pkey))
-                .map_or_else(|e| e, |_| 0),
+            DEPOSIT => {
+                unsafe { require(*pkey == *ADMIN_PUBKEY) };
+                self.deposit(&[self.data[0], self.data[1]])
+                    .map_or_else(|e| e, |_| 0)
+            },
             BOUNTY => self
                 .bounty(&AutomataPlayer::pkey_to_pid(pkey))
                 .map_or_else(|e| e, |_| 0),
