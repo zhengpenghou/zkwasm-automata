@@ -38,7 +38,7 @@ function createCommand(nonce: bigint, command: bigint, objindex: bigint) {
   return (nonce << 16n) + (objindex << 8n) + command;
 }
 
-const rpc = new ZKWasmAppRpc("http://localhost:3000");
+const rpc = new ZKWasmAppRpc("https://disco.0xrobot.cx:8085");
 
 export class Player {
   processingKey: string;
@@ -152,20 +152,19 @@ export class Player {
     }
   }
 
-  async deposit() {
+  async deposit(pid_1:bigint, pid_2:bigint, amount:bigint) {
     let nonce = await this.getNonce();
-    let accountInfo = new LeHexBN(query(this.processingKey).pkx).toU64Array();
     try {
       let finished = await rpc.sendTransaction(
-        new BigUint64Array([createCommand(nonce, CMD_DEPOSIT, 0n), accountInfo[1], accountInfo[2], 1000n]),
+        new BigUint64Array([createCommand(nonce, CMD_DEPOSIT, 0n), pid_1, pid_2, amount]),
         this.processingKey
       );
-      console.log("deposit processed at:", finished);
+      console.log("deposit processed at:", finished, pid_1, pid_2);
     } catch(e) {
       if(e instanceof Error) {
         console.log(e.message);
       }
-      console.log("deposit error at processing key:", this.processingKey);
+      console.log("deposit error ", pid_1, pid_2);
     }
   }
 

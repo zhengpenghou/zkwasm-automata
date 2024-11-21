@@ -10,8 +10,8 @@ async function main() {
   console.log("install player ...\n");
   await player.installPlayer();
 
-  console.log("deposit ...\n");
-  await player.deposit();
+  //console.log("deposit ...\n");
+  //await player.deposit();
 
   console.log("install object ...\n");
   await player.installObject(0n, [0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
@@ -28,7 +28,7 @@ async function main() {
   let state = await player.getState();
   console.log("query state:", state);
 
-  await player.deposit();
+  //await player.deposit();
 
   console.log("withdraw:\n");
   await player.withdrawRewards("c177d1d314C8FFe1Ea93Ca1e147ea3BE0ee3E470", 1n);
