@@ -38,22 +38,22 @@ function createCommand(nonce: bigint, command: bigint, objindex: bigint) {
   return (nonce << 16n) + (objindex << 8n) + command;
 }
 
-const rpc = new ZKWasmAppRpc("https://disco.0xrobot.cx:8085");
-
 export class Player {
   processingKey: string;
-  constructor(key: string) {
-    this.processingKey = key
+  rpc: ZKWasmAppRpc;
+  constructor(key: string, rpc: ZKWasmAppRpc) {
+    this.processingKey = key,
+    this.rpc = rpc;
   }
 
   async getConfig(): Promise<any> {
-    let config = await rpc.query_config();
+    let config = await this.rpc.query_config();
     return config;
   }
 
   async getState(): Promise<any> {
     // Get the state response
-    let state = await rpc.queryState(this.processingKey);
+    let state = await this.rpc.queryState(this.processingKey);
 
     // Parse the response to ensure it is a plain JSON object
     const parsedState = JSON.parse(JSON.stringify(state));
@@ -72,7 +72,7 @@ export class Player {
 
   async installPlayer() {
     try {
-      let finished = await rpc.sendTransaction(
+      let finished = await this.rpc.sendTransaction(
         new BigUint64Array([createCommand(0n, CMD_INSTALL_PLAYER, 0n), 0n, 0n, 0n]),
         this.processingKey
       );
@@ -88,7 +88,7 @@ export class Player {
   async installObject(objid: bigint, modifiers: Array<bigint>) {
     let nonce = await this.getNonce();
     try {
-      let finished = await rpc.sendTransaction(
+      let finished = await this.rpc.sendTransaction(
         new BigUint64Array([createCommand(nonce, CMD_INSTALL_OBJECT, objid), encode_modifier(modifiers), 0n, 0n]),
         this.processingKey
       );
@@ -104,7 +104,7 @@ export class Player {
   async restartObject(objid: bigint, modifiers: Array<bigint>) {
     let nonce = await this.getNonce();
     try {
-      let finished = await rpc.sendTransaction(
+      let finished = await this.rpc.sendTransaction(
         new BigUint64Array([createCommand(nonce, CMD_RESTART_OBJECT, objid), encode_modifier(modifiers), 0n, 0n]),
         this.processingKey
       );
@@ -121,7 +121,7 @@ export class Player {
   async upgradeObject(objid: bigint) {
     let nonce = await this.getNonce();
     try {
-      let finished = await rpc.sendTransaction(
+      let finished = await this.rpc.sendTransaction(
         new BigUint64Array([createCommand(nonce, CMD_UPGRADE_OBJECT, objid), 0n, 0n, 0n]),
         this.processingKey
       );
@@ -139,7 +139,7 @@ export class Player {
   async installCard() {
     let nonce = await this.getNonce();
     try {
-      let finished = await rpc.sendTransaction(
+      let finished = await this.rpc.sendTransaction(
         new BigUint64Array([createCommand(nonce, CMD_INSTALL_CARD, 0n), 0n, 0n, 0n]),
         this.processingKey
       );
@@ -155,7 +155,7 @@ export class Player {
   async deposit(pid_1:bigint, pid_2:bigint, amount:bigint) {
     let nonce = await this.getNonce();
     try {
-      let finished = await rpc.sendTransaction(
+      let finished = await this.rpc.sendTransaction(
         new BigUint64Array([createCommand(nonce, CMD_DEPOSIT, 0n), pid_1, pid_2, amount]),
         this.processingKey
       );
@@ -194,7 +194,7 @@ export class Player {
     console.log("third is", thirdLimb);
 
     try {
-      let processStamp = await rpc.sendTransaction(
+      let processStamp = await this.rpc.sendTransaction(
         new BigUint64Array([
           createCommand(nonce, CMD_WITHDRAW, 0n),
           (firstLimb << 32n) + amount,

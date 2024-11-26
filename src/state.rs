@@ -201,6 +201,7 @@ impl Transaction {
     }
 
     pub fn deposit(&self, pid: &[u64; 2]) -> Result<(), u32> {
+        //zkwasm_rust_sdk::dbg!("deposit\n");
         let mut admin = AutomataPlayer::get_from_pid(pid).unwrap();
         admin.check_and_inc_nonce(self.nonce);
         let mut player = AutomataPlayer::get_from_pid(&[self.data[0], self.data[1]]);
@@ -256,7 +257,7 @@ impl Transaction {
                 .map_or_else(|e| e, |_| 0),
             DEPOSIT => {
                 unsafe { require(*pkey == *ADMIN_PUBKEY) };
-                self.deposit(&[self.data[0], self.data[1]])
+                self.deposit(&AutomataPlayer::pkey_to_pid(pkey))
                     .map_or_else(|e| e, |_| 0)
             },
             BOUNTY => self

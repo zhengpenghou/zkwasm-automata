@@ -3,10 +3,13 @@ import { ethers } from "ethers";
 import { BigNumber } from '@ethersproject/bignumber';  // Import BigNumber from @ethersproject/bignumber
 import abiData from './Proxy.json' assert { type: 'json' };
 import dotenv from 'dotenv';
+import {ZKWasmAppRpc} from "zkwasm-ts-server";
 
 dotenv.config();
 
-let player = new Player(process.env.SERVER_ADMIN_KEY!);
+const rpc = new ZKWasmAppRpc("https://disco.0xrobot.cx:8085");
+
+let player = new Player(process.env.SERVER_ADMIN_KEY!, rpc);
 let provider = new ethers.JsonRpcProvider(process.env.RPC_PROVIDER!);
 
 const proxyContract = new ethers.Contract(process.env.SETTLEMENT_CONTRACT_ADDRESS!, abiData.abi, provider);

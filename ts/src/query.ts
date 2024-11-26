@@ -1,8 +1,10 @@
 import {stringify} from "querystring";
 import { Player } from "./api.js";
+import {ZKWasmAppRpc} from "zkwasm-ts-server";
 
+const rpc = new ZKWasmAppRpc("http://127.0.0.1:3000");
 let account = "1234";
-let player = new Player(account);
+let player = new Player(account, rpc);
 
 async function main() {
   await player.installPlayer();
