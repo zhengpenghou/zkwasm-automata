@@ -6,7 +6,10 @@ default: build
 ./src/admin.prikey: ./ts/node_modules/zkwasm-ts-server/src/init_admin.js
 	node ./ts/node_modules/zkwasm-ts-server/src/init_admin.js ./src/admin.prikey
 
-build: ./src/admin.prikey
+./ts/src/service.js:
+	cd ./ts && npx tsc && cd -
+
+build: ./src/admin.prikey ./ts/src/service.js
 	wasm-pack build --release --out-name application --out-dir pkg
 	wasm-opt -Oz -o $(INSTALL_DIR)/application_bg.wasm pkg/application_bg.wasm
 	cp pkg/application_bg.wasm $(INSTALL_DIR)/application_bg.wasm
@@ -20,7 +23,7 @@ clean:
 	rm -rf ./src/admin.prikey
 
 run:
-	node ./ts/node_modules/zkwasm-ts-server/src/service.js
+	node ./ts/src/service.js
 
 deploy:
 	docker build --file ./deploy/service.docker -t zkwasm-server . --network=host
