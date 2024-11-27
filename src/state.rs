@@ -208,12 +208,10 @@ impl Transaction {
         match player.as_mut() {
             None => {
                 let mut player = AutomataPlayer::new_from_pid([self.data[0], self.data[1]]);
-                player.check_and_inc_nonce(self.nonce);
                 player.data.cost_balance(-(self.data[2] as i64))?;
                 player.store();
             }
             Some(player) => {
-                player.check_and_inc_nonce(self.nonce);
                 player.data.cost_balance(-(self.data[2] as i64))?;
                 player.store();
             }
