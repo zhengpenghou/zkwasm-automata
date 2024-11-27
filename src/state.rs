@@ -218,6 +218,7 @@ impl Transaction {
                 player.store();
             }
         };
+        admin.store();
         Ok(()) // no error occurred
     }
 
