@@ -148,10 +148,13 @@ async function main() {
   await getTopUpEvents();
 
   // Listen for new TopUp events
-  proxyContract.on('TopUp', async (l1token: string, address: string, pid_1: BigNumber, pid_2: BigNumber, amount: BigNumber, event: EventLog) => {
-    console.log(`New TopUp event detected: ${event.transactionHash}`);
+  proxyContract.on('TopUp', async (l1token: string, address: string, pid_1: BigNumber, pid_2: BigNumber, amount: BigNumber, event: any) => {
+    console.log(event);
+    //const eventLog = event as EventLog;  // Explicitly cast to EventLog
+    //console.log(eventLog);
+    console.log(`New TopUp event detected: ${event.log.transactionHash}`);
     // Process the new TopUp event
-    await processTopUpEvent(event);
+    await processTopUpEvent(event.log);
   });
 }
 
