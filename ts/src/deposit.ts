@@ -104,12 +104,16 @@ async function processTopUpEvent(event: EventLog) {
 	  // await updateTxState(event.transactionHash, 'failed');
         }
     } else if (tx.state === 'in-progress'){
-        console.log("in-progress, something wrong happen, should manuel check retry or skip tx");
-	while(1);
+        while(1) {
+          console.log("in-progress, something wrong happen, should manuel check retry or skip tx");
+	  await new Promise(resolve => setTimeout(resolve, 1000));  // Wait for 1 second
+        }
     } else {
         if (tx.state != 'completed') {
-          console.log("shouldn't arrive here");
-	  while(1);
+	  while(1) {
+            console.log("shouldn't arrive here");
+	    await new Promise(resolve => setTimeout(resolve, 1000));  // Wait for 1 second
+	  }
 	}
     }
   } catch (error) {
