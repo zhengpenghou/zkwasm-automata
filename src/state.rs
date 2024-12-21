@@ -272,8 +272,9 @@ impl Transaction {
         let cmd = params[0] & 0xff;
         let nonce = params[0] >> 16;
         let command = if cmd == WITHDRAW {
+            unsafe { require (params[1] == 0) }; // only token index 0 is supported
             Command::Withdraw (Withdraw {
-                data: [params[1], params[2], params[3]]
+                data: [params[2], params[3], params[4]]
             })
         } else if cmd == INSTALL_OBJECT {
             Command::InstallObject (InstallObject {
@@ -286,8 +287,9 @@ impl Transaction {
                 modifiers: params[2].to_le_bytes(),
             })
         } else if cmd == DEPOSIT {
+            unsafe { require (params[1] == 0) }; // only token index 0 is supported
             Command::Deposit (Deposit {
-                data: [params[1], params[2], params[3]]
+                data: [params[2], params[3], params[4]]
             })
         } else if cmd == UPGRADE_OBJECT {
             Command::UpgradeObject(UpgradeObject {

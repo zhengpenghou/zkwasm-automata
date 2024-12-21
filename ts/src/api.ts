@@ -26,11 +26,11 @@ export class Player extends PlayerConvention {
 
   async installPlayer() {
     try {
-      let finished = await this.rpc.sendTransaction(
+      let result = await this.rpc.sendTransaction(
         this.createCommand(0n, CMD_INSTALL_PLAYER, []),
         this.processingKey
       );
-      console.log("installPlayer processed at:", finished);
+      return result;
     } catch(e) {
       if(e instanceof Error) {
         console.log(e.message);
