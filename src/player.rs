@@ -96,11 +96,11 @@ impl PlayerData {
         }
     }
 
-    pub fn upgrade_object(&mut self, object_index: usize, index: u64) {
+    pub fn upgrade_object(&mut self, object_index: usize, index: usize) {
         let object = self.objects.get_mut(object_index).unwrap();
         unsafe { zkwasm_rust_sdk::require(object.attributes[0] < 128) };
         object.attributes[0] += 1;
-        object.attributes[index as usize] += 1;
+        object.attributes[index] += 1;
     }
 
     pub fn apply_object_card(&mut self, object_index: usize, counter: u64) -> Option<usize> {

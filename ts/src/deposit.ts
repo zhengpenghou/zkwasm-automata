@@ -61,7 +61,7 @@ async function processTopUpEvent(event: EventLog) {
 
     // Check if this transaction is already in the database and in 'pending' or 'in-progress' state
     let tx = await findTxByHash(event.transactionHash);
-    
+
     if (!tx) {
       console.log(`Transaction hash not found: ${event.transactionHash}`);
       // Save tx hash and initial state as pending, along with other details
@@ -83,42 +83,42 @@ async function processTopUpEvent(event: EventLog) {
 
     // Only process transactions that are 'pending' or 'in-progress'
     if (tx && tx.state === 'pending') {
-        try {
-          // Set transaction state to "in-progress"
-          await updateTxState(event.transactionHash, 'in-progress');
-          console.log('Transaction state updated to "in-progress".');
+      try {
+        // Set transaction state to "in-progress"
+        await updateTxState(event.transactionHash, 'in-progress');
+        console.log('Transaction state updated to "in-progress".');
 
-          // Convert amount from wei to ether
-          let amountInEther = amount / BigInt(10 ** 18);
-          console.log("Deposited amount (in ether): ", amountInEther);
-	  if (amountInEther < 1n) {
-            console.error(`--------------Skip: Amount must be at least 1 Titan (in ether instead of wei) ${event.transactionHash}\n`);
+        // Convert amount from wei to ether
+        let amountInEther = amount / BigInt(10 ** 18);
+        console.log("Deposited amount (in ether): ", amountInEther);
+        if (amountInEther < 1n) {
+          console.error(`--------------Skip: Amount must be at least 1 Titan (in ether instead of wei) ${event.transactionHash}\n`);
 
-	  } else {
-            // Proceed with the deposit
-            await admin.deposit(pid_1, pid_2, amountInEther);
-            console.log(`------------------Deposit successful! ${event.transactionHash}\n`);
-	  }
-
-          // After successful deposit, set state to 'completed'
-          await updateTxState(event.transactionHash, 'completed');
-        } catch (error) {
-          console.error('Error during deposit:', error);
-          // In case of failure, mark as 'failed'
-	  // await updateTxState(event.transactionHash, 'failed');
+        } else {
+          // Proceed with the deposit
+          await admin.deposit(0n, pid_1, pid_2, amountInEther);
+          console.log(`------------------Deposit successful! ${event.transactionHash}\n`);
         }
+
+        // After successful deposit, set state to 'completed'
+        await updateTxState(event.transactionHash, 'completed');
+      } catch (error) {
+        console.error('Error during deposit:', error);
+        // In case of failure, mark as 'failed'
+        // await updateTxState(event.transactionHash, 'failed');
+      }
     } else if (tx.state === 'in-progress'){
-        while(1) {
-          console.log("in-progress, something wrong happen, should manuel check retry or skip tx");
-	  await new Promise(resolve => setTimeout(resolve, 1000));  // Wait for 1 second
-        }
+      while(1) {
+        console.log("in-progress, something wrong happen, should manuel check retry or skip tx");
+        await new Promise(resolve => setTimeout(resolve, 1000));  // Wait for 1 second
+      }
     } else {
-        if (tx.state != 'completed') {
-	  while(1) {
-            console.log("shouldn't arrive here");
-	    await new Promise(resolve => setTimeout(resolve, 1000));  // Wait for 1 second
-	  }
-	}
+      if (tx.state != 'completed') {
+        while(1) {
+          console.log("shouldn't arrive here");
+          await new Promise(resolve => setTimeout(resolve, 1000));  // Wait for 1 second
+        }
+      }
     }
   } catch (error) {
     console.error('Error processing TopUp event:', error);

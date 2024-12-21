@@ -10,7 +10,7 @@
     "@types/sync-fetch": "^0.4.3",
     "bullmq": "^5.7.9",
     "cors": "^2.8.5",
-    "delphinus-curves": "git+https://github.com/DelphinusLab/delphinus-curves.git#yyu/hybridPackage",
+    "delphinus-curves": "github:DelphinusLab/delphinus-curves#xgao",
     "dotenv": "^16.4.5",
     "ethers": "^6.13.1",
     "express": "^4.19.2",
@@ -20,9 +20,10 @@
     "sync-fetch": "^0.5.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5",
+    "zkwasm-minirollup-rpc": "github:DelphinusLab/zkWasm-minirollup-rpc",
     "zkwasm-service-cli": "git+https://github.com/DelphinusLab/zkWasm-service-cli.git",
     "zkwasm-service-helper": "github:DelphinusLab/zkWasm-service-helper",
-    "zkwasm-ts-server": "https://gitpkg.vercel.app/DelphinusLab/zkwasm-mini-rollup/ts?main"
+    "zkwasm-ts-server": "https://gitpkg.vercel.app/DelphinusLab/zkwasm-mini-rollup/ts?release-v1"
   },
   "scripts": {
     "build": "npx tsc",
