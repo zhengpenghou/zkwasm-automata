@@ -328,7 +328,7 @@ impl Transaction {
 
 
 
-    pub fn process(&self, pkey: &[u64; 4], rand: &[u64; 4]) -> u32 {
+    pub fn process(&self, pkey: &[u64; 4], rand: &[u64; 4]) -> Vec<u64> {
         let b = match self.command.clone() {
             Command::InstallPlayer => Self::install_player(&AutomataPlayer::pkey_to_pid(&pkey))
                 .map_or_else(|e| e, |_| 0),
@@ -351,13 +351,14 @@ impl Transaction {
                 .map_or_else(|e| e, |_| 0),
 
             Command::Tick => {
+                zkwasm_rust_sdk::dbg!("admin {:?}\n", {*ADMIN_PUBKEY});
+                zkwasm_rust_sdk::dbg!("pkey {:?}\n", {*pkey});
                 unsafe { require(*pkey == *ADMIN_PUBKEY) };
-                //zkwasm_rust_sdk::dbg!("admin {:?}\n", {*ADMIN_PUBKEY});
                 STATE.0.borrow_mut().queue.tick();
                 0
             }
         };
-        b
+        vec![b as u64]
     }
 }
 
@@ -391,7 +392,7 @@ impl State {
 
     pub fn preempt() -> bool {
         let counter = STATE.0.borrow().queue.counter;
-        if counter % 30 == 0 {
+        if counter % 2 == 0 {
             true
         } else {
             false
