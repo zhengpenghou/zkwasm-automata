@@ -27,7 +27,7 @@ export class Player extends PlayerConvention {
   async installPlayer() {
     try {
       let result = await this.rpc.sendTransaction(
-        this.createCommand(0n, CMD_INSTALL_PLAYER, [0n, 0n, 0n, 0n]),
+        this.createCommand(0n, CMD_INSTALL_PLAYER, []),
         this.processingKey
       );
       return result;
@@ -58,11 +58,11 @@ export class Player extends PlayerConvention {
   async restartObject(objid: bigint, modifiers: Array<bigint>) {
     let nonce = await this.getNonce();
     try {
-      let finished = await this.rpc.sendTransaction(
+      let result = await this.rpc.sendTransaction(
         this.createCommand(nonce, CMD_RESTART_OBJECT, [objid, encode_modifier(modifiers)]),
         this.processingKey
       );
-      console.log("restartObject processed at:", finished);
+      return result;
     } catch(e) {
       if(e instanceof Error) {
         console.log(e);
@@ -75,11 +75,11 @@ export class Player extends PlayerConvention {
   async upgradeObject(objid: bigint, featureId: bigint) {
     let nonce = await this.getNonce();
     try {
-      let finished = await this.rpc.sendTransaction(
+      let result = await this.rpc.sendTransaction(
         this.createCommand(nonce, CMD_UPGRADE_OBJECT, [objid, featureId]),
         this.processingKey
       );
-      console.log("upgradeObject processed at:", finished);
+      return result;
     } catch(e) {
       if(e instanceof Error) {
         console.log(e.message);
@@ -92,11 +92,11 @@ export class Player extends PlayerConvention {
   async installCard() {
     let nonce = await this.getNonce();
     try {
-      let finished = await this.rpc.sendTransaction(
+      let result = await this.rpc.sendTransaction(
         this.createCommand(nonce, CMD_INSTALL_CARD, []),
         this.processingKey
       );
-      console.log("installCard processed at:", finished);
+      return result
     } catch(e) {
       if(e instanceof Error) {
         console.log(e.message);

@@ -18,26 +18,29 @@ let pkeyArray = leHexBN.toU64Array();
 
 async function main() {
   let config = await player.getConfig();
+  let r;
   console.log("config", config);
 
   console.log("install player ...\n");
   await player.installPlayer();
 
-  /*
   console.log("install admin ...\n");
   await admin.installPlayer();
 
   console.log("deposit ...\n", pkeyArray[1], pkeyArray[2], admin.processingKey);
-  await admin.deposit(0n, pkeyArray[1], pkeyArray[2], 10n);
-  */
+  r = await admin.deposit(pkeyArray[1], pkeyArray[2], 0n, 10n);
+  console.log("result", r);
 
-  /*
   console.log("install object ...\n");
-  await player.installObject(0n, [0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
+  r = await player.installObject(0n, [0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
+  console.log("result", r);
 
   console.log("install card...\n");
-  await player.installCard();
+  r = await player.installCard();
+  console.log("result", r);
 
+
+  /*
   console.log("restart object ...\n");
   await player.restartObject(0n, [0n, 0n, 0n, 0n, 0n, 0n, 0n, 4n]);
 

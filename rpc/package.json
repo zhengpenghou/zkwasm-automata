@@ -24,6 +24,7 @@
     "zkwasm-service-cli": "git+https://github.com/DelphinusLab/zkWasm-service-cli.git",
     "zkwasm-service-helper": "github:DelphinusLab/zkWasm-service-helper"
   },
+  "main": "src/api.js",
   "scripts": {
     "build": "npx tsc",
     "postinstall": "npm run build"

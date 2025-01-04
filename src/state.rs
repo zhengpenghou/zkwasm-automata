@@ -201,32 +201,6 @@ pub struct Deposit {
 
 impl CommandHandler for Deposit {
     fn handle(&self, pid: &[u64; 2], nonce: u64, _rand: &[u64; 4]) -> Result<(), u32> {
-        let mut player = AutomataPlayer::get_from_pid(pid);
-        match player.as_mut() {
-            None => Err(ERROR_PLAYER_NOT_EXIST),
-            Some(player) => {
-                player.check_and_inc_nonce(nonce);
-                let amount = self.data[0] & 0xffffffff;
-                player.data.cost_balance(amount as i64)?;
-                let withdrawinfo =
-                    WithdrawInfo::new(&[self.data[0], self.data[1], self.data[2]], 0);
-                SettlementInfo::append_settlement(withdrawinfo);
-                player.store();
-                Ok(())
-            }
-        }
-    }
-}
-
-
-
-#[derive (Clone)]
-pub struct Withdraw {
-    data: [u64; 3],
-}
-
-impl CommandHandler for Withdraw {
-    fn handle(&self, pid: &[u64; 2], nonce: u64, _rand: &[u64; 4]) -> Result<(), u32> {
         //zkwasm_rust_sdk::dbg!("deposit\n");
         let mut admin = AutomataPlayer::get_from_pid(pid).unwrap();
         admin.check_and_inc_nonce(nonce);
@@ -246,6 +220,33 @@ impl CommandHandler for Withdraw {
         Ok(()) // no error occurred
     }
 }
+
+#[derive (Clone)]
+pub struct Withdraw {
+    data: [u64; 3],
+}
+
+impl CommandHandler for Withdraw {
+    fn handle(&self, pid: &[u64; 2], nonce: u64, _rand: &[u64; 4]) -> Result<(), u32> {
+        let mut player = AutomataPlayer::get_from_pid(pid);
+        match player.as_mut() {
+            None => Err(ERROR_PLAYER_NOT_EXIST),
+            Some(player) => {
+                player.check_and_inc_nonce(nonce);
+                let amount = self.data[0] & 0xffffffff;
+                player.data.cost_balance(amount as i64)?;
+                let withdrawinfo =
+                    WithdrawInfo::new(&[self.data[0], self.data[1], self.data[2]], 0);
+                SettlementInfo::append_settlement(withdrawinfo);
+                player.store();
+                Ok(())
+            }
+        }
+    }
+}
+
+
+
 
 
 const INSTALL_PLAYER: u64 = 1;
@@ -287,9 +288,10 @@ impl Transaction {
                 modifiers: params[2].to_le_bytes(),
             })
         } else if cmd == DEPOSIT {
-            unsafe { require (params[1] == 0) }; // only token index 0 is supported
+            zkwasm_rust_sdk::dbg!("params: {:?}\n", params);
+            unsafe { require (params[3] == 0) }; // only token index 0 is supported
             Command::Deposit (Deposit {
-                data: [params[2], params[3], params[4]]
+                data: [params[1], params[2], params[4]]
             })
         } else if cmd == UPGRADE_OBJECT {
             Command::UpgradeObject(UpgradeObject {
@@ -343,6 +345,7 @@ impl Transaction {
             Command::InstallCard(cmd) => cmd.handle(&AutomataPlayer::pkey_to_pid(pkey), self.nonce, rand)
                 .map_or_else(|e| e, |_| 0),
             Command::Deposit(cmd) => {
+                zkwasm_rust_sdk::dbg!("perform deposit: {:?} {:?}\n", {*pkey}, {*ADMIN_PUBKEY});
                 unsafe { require(*pkey == *ADMIN_PUBKEY) };
                 cmd.handle(&AutomataPlayer::pkey_to_pid(pkey), self.nonce, rand)
                     .map_or_else(|e| e, |_| 0)
