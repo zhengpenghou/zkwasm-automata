@@ -50,6 +50,7 @@ impl EventHandler for Event {
         let event = if let Some(delta) = m {
             if player.data.objects[object_index].get_modifier_index() == 0 {
                 player.data.energy -= 1;
+                player.data.inc_exp();
             }
             Some(Event {
                 owner: owner_id,

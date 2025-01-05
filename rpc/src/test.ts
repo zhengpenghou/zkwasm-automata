@@ -40,16 +40,19 @@ async function main() {
   console.log("result", r);
 
 
-  /*
   console.log("restart object ...\n");
-  await player.restartObject(0n, [0n, 0n, 0n, 0n, 0n, 0n, 0n, 4n]);
+  r = await player.restartObject(0n, [0n, 0n, 0n, 0n, 0n, 0n, 0n, 4n]);
+  console.log("result", r);
 
   console.log("upgrade object ...\n");
-  await player.upgradeObject(0n);
+  r = await player.upgradeObject(0n, 1n);
+  console.log("result", r);
+
 
   let state = await player.getState();
   console.log("query state:", state);
 
+  /*
   console.log("withdraw:\n");
   await player.withdrawRewards("c177d1d314C8FFe1Ea93Ca1e147ea3BE0ee3E470", 1n);
   */

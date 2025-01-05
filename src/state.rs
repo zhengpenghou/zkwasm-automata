@@ -42,6 +42,7 @@ pub enum Command {
     Deposit(Deposit),
     Bounty(Bounty),
     InstallPlayer,
+    CollectEnergy,
     Tick,
 }
 
@@ -257,6 +258,7 @@ const INSTALL_CARD: u64 = 5;
 const WITHDRAW: u64 = 6;
 const DEPOSIT: u64 = 7;
 const BOUNTY: u64 = 8;
+const COLLECT_ENERGY: u64 = 8;
 
 impl Transaction {
     pub fn decode_error(e: u32) -> &'static str {
@@ -306,6 +308,8 @@ impl Transaction {
             Command::InstallCard (InstallCard {})
         } else if cmd == INSTALL_PLAYER {
             Command::InstallPlayer
+        } else if cmd == COLLECT_ENERGY {
+            Command::CollectEnergy
         } else {
             Command::Tick
         };
@@ -315,6 +319,7 @@ impl Transaction {
             nonce,
         }
     }
+
     pub fn install_player(pid: &[u64; 2]) -> Result<(), u32> {
         let player = AutomataPlayer::get_from_pid(pid);
         match player {
@@ -324,6 +329,19 @@ impl Transaction {
                 player.store();
                 Ok(())
             }
+        }
+
+    }
+    pub fn collect_energy(pid: &[u64; 2]) -> Result<(), u32> {
+        let player = AutomataPlayer::get_from_pid(pid);
+        let counter = STATE.0.borrow().queue.counter;
+        match player {
+            Some(mut player) => {
+                player.data.collect_energy(counter)?;
+                player.store();
+                Ok(())
+            }
+            None => Err(ERROR_PLAYER_NOT_EXIST),
         }
     }
 
@@ -335,6 +353,8 @@ impl Transaction {
             Command::InstallPlayer => Self::install_player(&AutomataPlayer::pkey_to_pid(&pkey))
                 .map_or_else(|e| e, |_| 0),
             Command::InstallObject(cmd) => cmd.handle(&AutomataPlayer::pkey_to_pid(&pkey), self.nonce, rand)
+                .map_or_else(|e| e, |_| 0),
+            Command::CollectEnergy => Self::collect_energy(&AutomataPlayer::pkey_to_pid(&pkey))
                 .map_or_else(|e| e, |_| 0),
             Command::RestartObject(cmd) => cmd.handle(&AutomataPlayer::pkey_to_pid(&pkey), self.nonce, rand)
                 .map_or_else(|e| e, |_| 0),
@@ -395,7 +415,7 @@ impl State {
 
     pub fn preempt() -> bool {
         let counter = STATE.0.borrow().queue.counter;
-        if counter % 2 == 0 {
+        if counter % 20 == 0 {
             true
         } else {
             false

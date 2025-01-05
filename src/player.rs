@@ -28,6 +28,9 @@ impl Attributes {
 
 #[derive(Debug, Serialize)]
 pub struct PlayerData {
+    pub level: u16,
+    pub exp: u16,
+    pub last_check_point: u32,
     pub energy: u16, // this is collected from the supplier
     pub cost_info: u16,
     pub current_cost: u32,
@@ -40,6 +43,9 @@ pub struct PlayerData {
 impl Default for PlayerData {
     fn default() -> Self {
         Self {
+            level: 1,
+            exp: 0,
+            last_check_point: 0,
             energy: INITIAL_ENERGY,
             cost_info: COST_INCREASE_ROUND,
             current_cost: 0,
@@ -101,6 +107,24 @@ impl PlayerData {
         unsafe { zkwasm_rust_sdk::require(object.attributes[0] < 128) };
         object.attributes[0] += 1;
         object.attributes[index] += 1;
+    }
+
+    pub fn inc_exp(&mut self) {
+        self.exp += 1;
+        if self.exp >= 100 {
+            self.level += 1;
+            self.exp = 0;
+        }
+    }
+
+    pub fn collect_energy(&mut self, counter: u64) -> Result <(), u32> {
+        let delta = counter - (self.last_check_point as u64);
+        let energe = delta * (self.level as u64);
+        if energe > 1000 {
+            self.energy += 10;
+        }
+        self.last_check_point = counter as u32;
+        self.cost_balance(1)
     }
 
     pub fn apply_object_card(&mut self, object_index: usize, counter: u64) -> Option<usize> {
@@ -170,6 +194,7 @@ impl PlayerData {
 
 impl StorageData for PlayerData {
     fn from_data(u64data: &mut IterMut<u64>) -> Self {
+        let player_info = *u64data.next().unwrap();
         let cost_info = *u64data.next().unwrap();
         let redeem_info = *u64data.next().unwrap();
         let objects_size = *u64data.next().unwrap();
@@ -190,6 +215,9 @@ impl StorageData for PlayerData {
             cards.push(Card::from_data(u64data));
         }
         PlayerData {
+            level: ((player_info >> 48) & 0xffff) as u16,
+            exp: ((player_info >> 32) & 0xffff) as u16,
+            last_check_point : ((player_info >> 32) & 0xffffffff) as u32,
             energy: ((cost_info >> 48) & 0xffff) as u16,
             cost_info: ((cost_info >> 32) & 0xffff) as u16,
             redeem_info: redeem_info.to_le_bytes(),
@@ -201,9 +229,9 @@ impl StorageData for PlayerData {
     }
     fn to_data(&self, data: &mut Vec<u64>) {
         data.push(
-            ((self.energy as u64) << 48)
-                + ((self.cost_info as u64) << 32)
-                + (self.current_cost as u64),
+            ((self.level as u64) << 48)
+                + ((self.exp as u64) << 32)
+                + (self.last_check_point as u64),
         );
         data.push(u64::from_le_bytes(self.redeem_info));
         data.push(self.objects.len() as u64);

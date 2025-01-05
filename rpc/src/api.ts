@@ -16,6 +16,7 @@ const CMD_UPGRADE_OBJECT = 4n;
 const CMD_INSTALL_CARD = 5n;
 const CMD_WITHDRAW= 6n;
 const CMD_DEPOSIT = 7n;
+const CMD_BOUNTY = 8n;
 
 export class Player extends PlayerConvention {
   constructor(key: string, rpc: ZKWasmAppRpc) {
