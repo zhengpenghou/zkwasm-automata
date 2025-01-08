@@ -59,7 +59,7 @@ make
 
 5. Run WASM service:
 ```
-node ts/node_modules/zkwasm-ts-server/src/service.js
+make run
 ```
 
 ## Provide a FrontEnd
