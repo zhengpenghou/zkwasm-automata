@@ -233,6 +233,11 @@ impl StorageData for PlayerData {
                 + ((self.exp as u64) << 32)
                 + (self.last_check_point as u64),
         );
+        data.push(
+            ((self.energy as u64) << 48)
+            + ((self.cost_info as u64) << 32)
+            + (self.current_cost as u64),
+        );
         data.push(u64::from_le_bytes(self.redeem_info));
         data.push(self.objects.len() as u64);
         for c in self.objects.iter() {
