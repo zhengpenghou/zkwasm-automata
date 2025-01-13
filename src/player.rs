@@ -217,7 +217,7 @@ impl StorageData for PlayerData {
         PlayerData {
             level: ((player_info >> 48) & 0xffff) as u16,
             exp: ((player_info >> 32) & 0xffff) as u16,
-            last_check_point : ((player_info >> 32) & 0xffffffff) as u32,
+            last_check_point : (player_info & 0xffffffff) as u32,
             energy: ((cost_info >> 48) & 0xffff) as u16,
             cost_info: ((cost_info >> 32) & 0xffff) as u16,
             redeem_info: redeem_info.to_le_bytes(),
