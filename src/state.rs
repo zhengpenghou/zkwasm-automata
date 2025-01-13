@@ -258,7 +258,7 @@ const INSTALL_CARD: u64 = 5;
 const WITHDRAW: u64 = 6;
 const DEPOSIT: u64 = 7;
 const BOUNTY: u64 = 8;
-const COLLECT_ENERGY: u64 = 8;
+const COLLECT_ENERGY: u64 = 9;
 
 impl Transaction {
     pub fn decode_error(e: u32) -> &'static str {
