@@ -129,17 +129,19 @@ impl PlayerData {
 
     pub fn apply_object_card(&mut self, object_index: usize, counter: u64) -> Option<usize> {
         let object = self.objects[object_index].clone();
+        let speed = object.attributes[1] as u64;
         let current_index = object.get_modifier_index() as usize;
         if object.is_restarting() {
             //zkwasm_rust_sdk::dbg!("is restarting !\n");
             let next_index = 0;
             let duration = self.cards[object.cards[next_index] as usize].duration;
+            let duration = if duration > speed { duration - speed} else { 1 };
             let object = self.objects.get_mut(object_index).unwrap();
             object.start_new_modifier(next_index, counter);
             Some(duration as usize)
         } else {
             let card = self.cards[object.cards[current_index] as usize].clone();
-            let applied = self.apply_modifier(&card);
+            let applied = self.apply_modifier(&card, &object);
             zkwasm_rust_sdk::dbg!("applied modifier!\n");
             let object = self.objects.get_mut(object_index).unwrap();
             if applied {
@@ -147,6 +149,7 @@ impl PlayerData {
                 //zkwasm_rust_sdk::dbg!("player after: {:?}\n", {&self.local});
                 let next_index = (current_index + 1) % object.cards.len();
                 let duration = self.cards[object.cards[next_index] as usize].duration;
+                let duration = if duration > speed { duration - speed} else { 1 };
                 object.start_new_modifier(next_index, counter);
                 Some(duration as usize)
             } else {
@@ -178,15 +181,17 @@ impl PlayerData {
             None
         }
     }
-    pub fn apply_modifier(&mut self, m: &Card) -> bool {
+    pub fn apply_modifier(&mut self, m: &Card, o: &Object) -> bool {
+        let reduce = o.attributes[2] as i64;
+        let productivity = o.attributes[3] as i64;
         let m = m.attributes.iter().map(|x| *x as i64).collect::<Vec<_>>();
         for (a, b) in self.local.0.iter().zip(m.iter()) {
-            if *a + *b < 0 {
+            if *a + *b + reduce < 0 {
                 return false;
             }
         }
         for (a, b) in self.local.0.iter_mut().zip(m.iter()) {
-            *a += *b;
+            *a += *b + productivity;
         }
         return true;
     }
