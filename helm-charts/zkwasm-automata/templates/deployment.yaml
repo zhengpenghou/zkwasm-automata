@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "zkwasm-automata.fullname" . }}
+  labels:
+    {{- include "zkwasm-automata.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "zkwasm-automata.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "zkwasm-automata.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: app
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        command: ["node"]
+        args: ["--experimental-modules", "--es-module-specifier-resolution=node", "ts/src/service.js"]
+        env:
+        - name: URI
+          value: mongodb://{{ include "zkwasm-automata.fullname" . }}-mongodb:{{ .Values.config.mongodb.port }}
+        - name: REDISHOST
+          value: {{ include "zkwasm-automata.fullname" . }}-redis
+        - name: REDIS_PORT
+          value: "{{ .Values.config.redis.port }}"
+        - name: MERKLE_SERVER
+          value: http://{{ include "zkwasm-automata.fullname" . }}-merkle:{{ .Values.config.merkle.port }}
+        ports:
+        - containerPort: 3000
+          name: http
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}

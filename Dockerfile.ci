@@ -1,0 +1,175 @@
+# Build stage
+FROM rust:bullseye as builder
+
+# Install and verify specific nightly version
+RUN rustup default nightly-2023-06-01 && \
+    rustup target add wasm32-unknown-unknown && \
+    # 验证当前使用的版本
+    echo "Verifying Rust version:" && \
+    rustc --version && \
+    # 设置 RUSTUP_TOOLCHAIN 环境变量确保使用指定版本
+    echo "export RUSTUP_TOOLCHAIN=nightly-2023-06-01" >> /root/.bashrc && \
+    echo "export RUSTUP_TOOLCHAIN=nightly-2023-06-01" >> /root/.profile
+
+# 设置环境变量确保后续命令使用正确的版本
+ENV RUSTUP_TOOLCHAIN=nightly-2023-06-01
+
+# 添加构建参数
+ARG DEPLOY
+ARG USER_PRIVATE_ACCOUNT
+ARG USER_ADDRESS
+ARG SETTLEMENT_CONTRACT_ADDRESS
+ARG RPC_PROVIDER
+ARG SETTLER_PRIVATE_ACCOUNT
+ARG SERVER_ADMIN_KEY
+ARG PORT
+ARG AUTO_SUBMIT
+
+# 在构建阶段打印参数（构建日志中可见）
+RUN echo "Build arguments in builder stage:" && \
+    echo "DEPLOY=${DEPLOY}" && \
+    echo "USER_ADDRESS=${USER_ADDRESS}" && \
+    echo "SETTLEMENT_CONTRACT_ADDRESS=${SETTLEMENT_CONTRACT_ADDRESS}" && \
+    echo "RPC_PROVIDER=${RPC_PROVIDER}" && \
+    echo "PORT=${PORT}" && \
+    echo "AUTO_SUBMIT=${AUTO_SUBMIT}"
+    # 不打印敏感信息
+
+# Install build dependencies and Node.js 18
+RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    pkg-config \
+    git \
+    binaryen \
+    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install wasm-pack
+RUN curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+WORKDIR /app
+
+# Copy only necessary files for dependency installation
+COPY Cargo.toml Cargo.lock rust-toolchain ./
+COPY ts/package*.json ts/
+COPY ts/tsconfig.json ts/
+
+# Create dummy source files to cache dependencies
+RUN mkdir src && echo "fn main() {}" > src/lib.rs
+# Add retry mechanism and clean npm cache before install
+RUN cd ts && \
+    npm cache clean --force && \
+    for i in {1..3}; do \
+      npm ci || npm install && break || \
+      if [ $i -lt 3 ]; then \
+        echo "Retry $i... (npm ci failed, trying npm install)" && \
+        sleep 5; \
+      else \
+        exit 1; \
+      fi \
+    done
+
+# Copy actual source code
+COPY . .
+
+# Build the application and generate MD5
+RUN echo "check rust version" && \
+    rustc --version && \
+    echo "check rust toolchain" && \
+    rustup show && \
+    make build && \
+    echo "IMAGE=$(md5sum ts/node_modules/zkwasm-ts-server/src/application/application_bg.wasm | awk '{print $1}' | tr 'a-z' 'A-Z')" > /app/.env
+
+# Run publish script with retries
+RUN ls -la ts/ && \
+    echo "Content of publish.sh:" && \
+    cat ts/publish.sh && \
+    echo "Current working directory:" && \
+    pwd && \
+    chmod +x ts/publish.sh && \
+    cd ts && \
+    for i in 1 2 3; do \
+      echo "----------------------------------------" && \
+      echo "Starting attempt $i to publish image..." && \
+      echo "Running: publish.sh" && \
+      echo "----------------------------------------" && \
+      echo "Before executing script" && \
+      ./publish.sh || echo "Script exit code: $?" && \
+      output=$(./publish.sh 2>&1) && \
+      echo "Command output:" && \
+      echo "$output" && \
+      echo "----------------------------------------" && \
+      if echo "$output" | grep -q "already exists\|Add Image Response"; then \
+        echo "Successfully published image" && \
+        break; \
+      else \
+        if [ $i -eq 3 ]; then \
+          echo "Failed to publish image after 3 attempts" && \
+          echo "Last error output:" && \
+          echo "$output" && \
+          exit 1; \
+        fi; \
+        echo "Publish failed, retrying in 5 seconds..." && \
+        echo "Error output:" && \
+        echo "$output" && \
+        sleep 5; \
+      fi; \
+    done
+
+
+# Production stage
+FROM node:18-slim
+
+# 重新声明 ARG，这在多阶段构建中是必需的
+ARG DEPLOY
+ARG USER_PRIVATE_ACCOUNT
+ARG USER_ADDRESS
+ARG SETTLEMENT_CONTRACT_ADDRESS
+ARG RPC_PROVIDER
+ARG SETTLER_PRIVATE_ACCOUNT
+ARG SERVER_ADMIN_KEY
+ARG PORT
+ARG AUTO_SUBMIT
+
+COPY --from=builder /app/.env /app/.env
+
+ENV DEPLOY="${DEPLOY}" \
+    USER_PRIVATE_ACCOUNT="${USER_PRIVATE_ACCOUNT}" \
+    USER_ADDRESS="${USER_ADDRESS}" \
+    SETTLEMENT_CONTRACT_ADDRESS="${SETTLEMENT_CONTRACT_ADDRESS}" \
+    RPC_PROVIDER="${RPC_PROVIDER}" \
+    SETTLER_PRIVATE_ACCOUNT="${SETTLER_PRIVATE_ACCOUNT}" \
+    SERVER_ADMIN_KEY="${SERVER_ADMIN_KEY}" \
+    PORT="${PORT}" \
+    AUTO_SUBMIT="${AUTO_SUBMIT}" 
+
+# 添加调试信息
+RUN echo "Verifying environment variables:" && \
+    echo "DEPLOY=${DEPLOY}" && \
+    echo "USER_ADDRESS=${USER_ADDRESS}" && \
+    echo "PORT=${PORT}" && \
+    echo "AUTO_SUBMIT=${AUTO_SUBMIT}"
+
+# 从构建阶段复制环境变量文件
+COPY --from=builder /app/.env /app/.env
+
+RUN echo "check env" && \
+    cat /app/.env && \
+    echo "check env done"
+
+WORKDIR /app
+
+# Copy only necessary files from builder
+COPY --from=builder /app/ts ./ts
+COPY --from=builder /app/src/admin.pubkey ./src/admin.pubkey
+
+# Create user first
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Switch to non-root user
+USER appuser
+
+EXPOSE 3000
+CMD ["node", "./ts/src/service.js"]
