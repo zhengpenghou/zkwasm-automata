@@ -62,7 +62,7 @@ RUN mkdir src && echo "fn main() {}" > src/lib.rs
 RUN cd ts && \
     npm cache clean --force && \
     for i in {1..3}; do \
-      npm ci || npm install && break || \
+      npm ci --ignore-scripts || npm install && break || \
       if [ $i -lt 3 ]; then \
         echo "Retry $i... (npm ci failed, trying npm install)" && \
         sleep 5; \
