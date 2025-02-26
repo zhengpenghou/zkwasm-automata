@@ -14,7 +14,7 @@ Because the game requires careful, real-time management of miners, it effectivel
 
 For fresh environment, run `source script/environment_linux.sh` for Linux.
 
-If you see some error messages, need manually install the error module in your OS.
+If you see some error messages, need manually install the error module in your OS..
 
 ### Required service:
 
