@@ -56,10 +56,8 @@ COPY Cargo.toml Cargo.lock rust-toolchain ./
 COPY ts/package*.json ts/
 COPY ts/tsconfig.json ts/
 
-# Create dummy TypeScript source directory to prevent compilation errors
 RUN mkdir -p ts/src && touch ts/src/dummy.ts
 
-# Create dummy source files to cache dependencies
 RUN mkdir src && echo "fn main() {}" > src/lib.rs
 # Add retry mechanism and clean npm cache before install
 RUN cd ts && \
