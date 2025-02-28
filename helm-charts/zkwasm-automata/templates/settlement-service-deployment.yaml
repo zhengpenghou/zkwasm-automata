@@ -22,11 +22,18 @@ spec:
         - name: settlement-service
           image: "{{ .Values.settlementService.image.repository }}:{{ .Values.settlementService.image.tag }}"
           imagePullPolicy: {{ .Values.settlementService.image.pullPolicy }}
-          args: ["settlement"]
+          command: ["/app/start.sh"]
           ports:
             - name: http
               containerPort: 3000
               protocol: TCP
+          env:
+            - name: DEPLOY
+              value: "settlement"
+            {{- range $key, $value := .Values.settlementService.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
           resources:
             {{- toYaml .Values.settlementService.resources | nindent 12 }}
 {{- end }}
