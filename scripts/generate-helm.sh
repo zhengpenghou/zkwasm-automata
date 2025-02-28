@@ -4,6 +4,14 @@
 CHART_NAME="zkwasm-automata"
 ALLOWED_ORIGINS="*" # 多个域名用逗号分隔
 CHART_PATH="./helm-charts/${CHART_NAME}"
+DEPLOY_VALUE="true"
+REMOTE_VALUE="true"
+AUTO_SUBMIT_VALUE="" # 默认为空
+IMAGE_VALUE="CE37CF0DF6D52E3A6D4A0357123FBF39"
+MINI_SERVICE_IMAGE="delphinus/zkwasm-mini-service:latest"
+
+echo "Using IMAGE_VALUE: ${IMAGE_VALUE}"
+echo "Using MINI_SERVICE_IMAGE: ${MINI_SERVICE_IMAGE}"
 
 # 创建必要的目录
 mkdir -p ${CHART_PATH}/templates
@@ -20,6 +28,124 @@ rm -f ${CHART_PATH}/templates/ingress.yaml
 rm -f ${CHART_PATH}/templates/NOTES.txt
 rm -f ${CHART_PATH}/values.yaml
 
+# 创建 deposit service 模板
+cat >${CHART_PATH}/templates/deposit-service-deployment.yaml <<EOL
+{{- if .Values.depositService.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "${CHART_NAME}.fullname" . }}-deposit
+  labels:
+    {{- include "${CHART_NAME}.labels" . | nindent 4 }}
+    app.kubernetes.io/component: deposit-service
+spec:
+  replicas: {{ .Values.depositService.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "${CHART_NAME}.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: deposit-service
+  template:
+    metadata:
+      labels:
+        {{- include "${CHART_NAME}.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: deposit-service
+    spec:
+      containers:
+        - name: deposit-service
+          image: "{{ .Values.depositService.image.repository }}:{{ .Values.depositService.image.tag }}"
+          imagePullPolicy: {{ .Values.depositService.image.pullPolicy }}
+          args: ["deposit"]
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.depositService.resources | nindent 12 }}
+{{- end }}
+EOL
+
+# 创建 deposit service service 模板
+cat >${CHART_PATH}/templates/deposit-service-service.yaml <<EOL
+{{- if .Values.depositService.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "${CHART_NAME}.fullname" . }}-deposit
+  labels:
+    {{- include "${CHART_NAME}.labels" . | nindent 4 }}
+    app.kubernetes.io/component: deposit-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3000
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "${CHART_NAME}.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: deposit-service
+{{- end }}
+EOL
+
+# 创建 settlement service 模板
+cat >${CHART_PATH}/templates/settlement-service-deployment.yaml <<EOL
+{{- if .Values.settlementService.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "${CHART_NAME}.fullname" . }}-settlement
+  labels:
+    {{- include "${CHART_NAME}.labels" . | nindent 4 }}
+    app.kubernetes.io/component: settlement-service
+spec:
+  replicas: {{ .Values.settlementService.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "${CHART_NAME}.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: settlement-service
+  template:
+    metadata:
+      labels:
+        {{- include "${CHART_NAME}.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: settlement-service
+    spec:
+      containers:
+        - name: settlement-service
+          image: "{{ .Values.settlementService.image.repository }}:{{ .Values.settlementService.image.tag }}"
+          imagePullPolicy: {{ .Values.settlementService.image.pullPolicy }}
+          args: ["settlement"]
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.settlementService.resources | nindent 12 }}
+{{- end }}
+EOL
+
+# 创建 settlement service service 模板
+cat >${CHART_PATH}/templates/settlement-service-service.yaml <<EOL
+{{- if .Values.settlementService.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "${CHART_NAME}.fullname" . }}-settlement
+  labels:
+    {{- include "${CHART_NAME}.labels" . | nindent 4 }}
+    app.kubernetes.io/component: settlement-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3000
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "${CHART_NAME}.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: settlement-service
+{{- end }}
+EOL
+
 # 创建 PVC 模板
 cat >${CHART_PATH}/templates/mongodb-pvc.yaml <<EOL
 {{- if and .Values.config.mongodb.enabled .Values.config.mongodb.persistence.enabled }}
@@ -29,6 +155,8 @@ metadata:
   name: {{ include "${CHART_NAME}.fullname" . }}-mongodb-pvc
   labels:
     {{- include "${CHART_NAME}.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/resource-policy": keep
 spec:
   accessModes:
     - ReadWriteOnce
@@ -39,15 +167,75 @@ spec:
 {{- end }}
 EOL
 
+# 获取远程仓库信息
+REPO_URL=$(git config --get remote.origin.url)
+if [[ $REPO_URL == *"github.com"* ]]; then
+	# 从 GitHub URL 提取用户名/组织名
+	if [[ $REPO_URL == *":"* ]]; then
+		# SSH 格式: git@github.com:username/repo.git
+		REPO_OWNER=$(echo $REPO_URL | sed -E 's/.*:([^\/]+)\/[^\/]+.*/\1/')
+	else
+		# HTTPS 格式: https://github.com/username/repo.git
+		REPO_OWNER=$(echo $REPO_URL | sed -E 's/.*github\.com\/([^\/]+).*/\1/')
+	fi
+
+	# 确保只提取用户名部分，移除任何 URL 前缀
+	REPO_OWNER=$(echo $REPO_OWNER | sed 's/https:\/\///g' | sed 's/http:\/\///g')
+
+	# 确保只提取用户名部分，移除 github.com 和后面的路径
+	REPO_OWNER=$(echo $REPO_OWNER | sed 's/github\.com\///g' | sed 's/\/.*//g')
+
+	# 转换为小写
+	REPO_OWNER=$(echo $REPO_OWNER | tr '[:upper:]' '[:lower:]')
+else
+	# 如果不是 GitHub 仓库，使用默认值
+	REPO_OWNER="jupiterxiaoxiaoyu"
+	echo "Warning: Not a GitHub repository or couldn't determine owner. Using default: $REPO_OWNER"
+fi
+
+# 打印提取的用户名，用于调试
+echo "Using repository owner: $REPO_OWNER"
+
 # 生成新的 values.yaml
 cat >${CHART_PATH}/values.yaml <<EOL
 # Default values for ${CHART_NAME}
 replicaCount: 1
 
 image:
-  repository: ghcr.io/jupiterxiaoxiaoyu/${CHART_NAME}
+  repository: ghcr.io/${REPO_OWNER}/${CHART_NAME}
   pullPolicy: IfNotPresent
   tag: "latest"  # 可以是 latest 或 MD5 值
+
+# Mini-service components
+depositService:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ${MINI_SERVICE_IMAGE%:*}
+    tag: ${MINI_SERVICE_IMAGE#*:}
+    pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+settlementService:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ${MINI_SERVICE_IMAGE%:*}
+    tag: ${MINI_SERVICE_IMAGE#*:}
+    pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
 
 # 添加 ingress 配置
 ingress:
@@ -73,6 +261,11 @@ ingress:
 
 # 应用配置
 config:
+  app:
+    deploy: "${DEPLOY_VALUE}"
+    remote: "${REMOTE_VALUE}"
+    autoSubmit: "${AUTO_SUBMIT_VALUE}"
+    image: "${IMAGE_VALUE}"
   mongodb:
     enabled: true
     image:
@@ -157,6 +350,19 @@ spec:
           value: "{{ .Values.config.redis.port }}"
         - name: MERKLE_SERVER
           value: http://{{ include "${CHART_NAME}.fullname" . }}-merkle:{{ .Values.config.merkle.port }}
+        - name: SERVER_ADMIN_KEY
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: SERVER_ADMIN_KEY
+        - name: DEPLOY
+          value: "{{ .Values.config.app.deploy | default "true" }}"
+        - name: REMOTE
+          value: "{{ .Values.config.app.remote | default "true" }}"
+        - name: AUTO_SUBMIT
+          value: "{{ .Values.config.app.autoSubmit | default "" }}"
+        - name: IMAGE
+          value: "{{ .Values.config.app.image | default "" }}"
         ports:
         - containerPort: 3000
           name: http
@@ -332,6 +538,8 @@ metadata:
   name: {{ include "${CHART_NAME}.fullname" . }}-mongodb-pvc
   labels:
     {{- include "${CHART_NAME}.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/resource-policy": keep
 spec:
   accessModes:
     - ReadWriteOnce

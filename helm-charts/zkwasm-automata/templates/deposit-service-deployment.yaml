@@ -1,0 +1,32 @@
+{{- if .Values.depositService.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "zkwasm-automata.fullname" . }}-deposit
+  labels:
+    {{- include "zkwasm-automata.labels" . | nindent 4 }}
+    app.kubernetes.io/component: deposit-service
+spec:
+  replicas: {{ .Values.depositService.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "zkwasm-automata.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: deposit-service
+  template:
+    metadata:
+      labels:
+        {{- include "zkwasm-automata.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: deposit-service
+    spec:
+      containers:
+        - name: deposit-service
+          image: "{{ .Values.depositService.image.repository }}:{{ .Values.depositService.image.tag }}"
+          imagePullPolicy: {{ .Values.depositService.image.pullPolicy }}
+          args: ["deposit"]
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.depositService.resources | nindent 12 }}
+{{- end }}

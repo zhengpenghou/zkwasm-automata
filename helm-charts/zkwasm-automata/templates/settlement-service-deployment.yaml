@@ -1,0 +1,32 @@
+{{- if .Values.settlementService.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "zkwasm-automata.fullname" . }}-settlement
+  labels:
+    {{- include "zkwasm-automata.labels" . | nindent 4 }}
+    app.kubernetes.io/component: settlement-service
+spec:
+  replicas: {{ .Values.settlementService.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "zkwasm-automata.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: settlement-service
+  template:
+    metadata:
+      labels:
+        {{- include "zkwasm-automata.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: settlement-service
+    spec:
+      containers:
+        - name: settlement-service
+          image: "{{ .Values.settlementService.image.repository }}:{{ .Values.settlementService.image.tag }}"
+          imagePullPolicy: {{ .Values.settlementService.image.pullPolicy }}
+          args: ["settlement"]
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.settlementService.resources | nindent 12 }}
+{{- end }}
