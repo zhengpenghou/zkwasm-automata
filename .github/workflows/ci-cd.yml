@@ -5,22 +5,12 @@ on:
     branches: [ main ]
     tags: [ 'v*' ]
 
-
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  DEPLOY: ${{ secrets.DEPLOY }}
-  USER_PRIVATE_ACCOUNT: ${{ secrets.USER_PRIVATE_ACCOUNT }}
-  USER_ADDRESS: ${{ secrets.USER_ADDRESS }}
-  SETTLEMENT_CONTRACT_ADDRESS: ${{ secrets.SETTLEMENT_CONTRACT_ADDRESS }}
-  RPC_PROVIDER: ${{ secrets.RPC_PROVIDER }}
-  SETTLER_PRIVATE_ACCOUNT: ${{ secrets.SETTLER_PRIVATE_ACCOUNT }}
-  SERVER_ADMIN_KEY: ${{ secrets.SERVER_ADMIN_KEY }}
-  PORT: ${{ secrets.PORT }}
-  AUTO_SUBMIT: ${{ secrets.AUTO_SUBMIT }}
 
 jobs:
-  build-and-push:
+  build-and-deploy:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -59,37 +49,41 @@ jobs:
             type=semver,pattern={{version}}
             type=sha,format=long
 
+      - name: Ensure .env file exists
+        run: |
+          if [ ! -f .env ]; then
+            echo "Creating default .env file"
+            echo "BUILD_MODE=production" > .env
+          fi
+          echo "Current .env file contents:"
+          cat .env
+
       - name: Build and push image
         uses: docker/build-push-action@v5
-        env:
-          DEPLOY: ${{ secrets.DEPLOY }}
-          USER_PRIVATE_ACCOUNT: ${{ secrets.USER_PRIVATE_ACCOUNT }}
-          USER_ADDRESS: ${{ secrets.USER_ADDRESS }}
-          SETTLEMENT_CONTRACT_ADDRESS: ${{ secrets.SETTLEMENT_CONTRACT_ADDRESS }}
-          RPC_PROVIDER: ${{ secrets.RPC_PROVIDER }}
-          SETTLER_PRIVATE_ACCOUNT: ${{ secrets.SETTLER_PRIVATE_ACCOUNT }}
-          SERVER_ADMIN_KEY: ${{ secrets.SERVER_ADMIN_KEY }}
-          PORT: ${{ secrets.PORT }}
-          AUTO_SUBMIT: ${{ secrets.AUTO_SUBMIT }}
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
           file: Dockerfile.ci
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            DEPLOY=${{ secrets.DEPLOY }}
-            USER_PRIVATE_ACCOUNT=${{ secrets.USER_PRIVATE_ACCOUNT }}
-            USER_ADDRESS=${{ secrets.USER_ADDRESS }}
-            SETTLEMENT_CONTRACT_ADDRESS=${{ secrets.SETTLEMENT_CONTRACT_ADDRESS }}
-            RPC_PROVIDER=${{ secrets.RPC_PROVIDER }}
-            SETTLER_PRIVATE_ACCOUNT=${{ secrets.SETTLER_PRIVATE_ACCOUNT }}
-            SERVER_ADMIN_KEY=${{ secrets.SERVER_ADMIN_KEY }}
-            PORT=${{ secrets.PORT }}
-            AUTO_SUBMIT=${{ secrets.AUTO_SUBMIT }}
           no-cache: true
+
+      - name: Generate image info
+        if: success() && github.event_name != 'pull_request'
+        run: |
+          echo "Image built and pushed successfully"
+          echo "Image: ${{ env.REGISTRY }}/${{ env.REPO_LOWER }}"
+          echo "Tags: ${{ steps.meta.outputs.tags }}"
+          
+          echo "Using pre-built WASM files from build-artifacts directory"
+          if [ -f build-artifacts/wasm.md5 ]; then
+            echo "WASM MD5 from build-artifacts: $(cat build-artifacts/wasm.md5)"
+          else
+            echo "Warning: build-artifacts/wasm.md5 file not found"
+          fi
 
       - name: Notify build result
         if: always()
         run: |
           echo "Image built and pushed: ${{ env.REGISTRY }}/${{ env.REPO_LOWER }}"
+          echo "Build status: ${{ job.status }}"

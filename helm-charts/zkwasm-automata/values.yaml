@@ -2,9 +2,55 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/jupiterxiaoxiaoyu/zkwasm-automata
+  repository: ghcr.io/zhengpenghou/zkwasm-automata
   pullPolicy: IfNotPresent
   tag: "latest"  # 可以是 latest 或 MD5 值
+
+# Mini-service components
+depositService:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/jupiterxiaoxiaoyu/zkwasm-mini-service
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  env:
+    RPC_PROVIDER: "https://your-ethereum-rpc"
+    SERVER_ADMIN_KEY: "your-admin-key"
+    SETTLEMENT_CONTRACT_ADDRESS: "0x..."
+    MONGO_URI: "mongodb://zkwasm-automata-testing-mongodb:27017"
+    ZKWASM_RPC_URL: "https://your-zkwasm-rpc"
+    CHAIN_ID: "1"
+
+settlementService:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/jupiterxiaoxiaoyu/zkwasm-mini-service
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  env:
+    RPC_PROVIDER: "https://your-ethereum-rpc"
+    SERVER_ADMIN_KEY: "your-admin-key"
+    SETTLEMENT_CONTRACT_ADDRESS: "0x..."
+    MONGO_URI: "mongodb://zkwasm-automata-testing-mongodb:27017"
+    ZKWASM_RPC_URL: "https://your-zkwasm-rpc"
+    SETTLER_PRIVATE_KEY: "your-settler-private-key"
+    CHAIN_ID: "1"
 
 # 添加 ingress 配置
 ingress:
@@ -30,6 +76,11 @@ ingress:
 
 # 应用配置
 config:
+  app:
+    deploy: "true"
+    remote: "true"
+    autoSubmit: ""
+    image: "CE37CF0DF6D52E3A6D4A0357123FBF39"
   mongodb:
     enabled: true
     image:
