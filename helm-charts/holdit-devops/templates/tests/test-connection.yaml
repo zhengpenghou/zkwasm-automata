@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "holdit-devops.fullname" . }}-test-connection"
+  labels:
+    {{- include "holdit-devops.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args: ['{{ include "holdit-devops.fullname" . }}:{{ .Values.service.port }}']
+  restartPolicy: Never

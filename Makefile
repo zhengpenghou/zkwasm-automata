@@ -1,5 +1,6 @@
 INSTALL_DIR=./ts/node_modules/zkwasm-ts-server/src/application
 RUNNING_DIR=./ts/node_modules/zkwasm-ts-server
+BUILD_ARTIFACTS_DIR=./build-artifacts
 
 default: build
 
@@ -17,27 +18,28 @@ build: ./src/admin.pubkey ./ts/src/service.js
 	#cp pkg/application_bg.js $(INSTALL_DIR)/application_bg.js
 	cp pkg/application_bg.wasm.d.ts $(INSTALL_DIR)/application_bg.wasm.d.ts
 	cd $(RUNNING_DIR) && npx tsc && cd -
+	echo "MD5:"
+	# 获取 MD5 值并转换为大写
+	$(eval MD5_VALUE := $(shell md5sum $(INSTALL_DIR)/application_bg.wasm | awk '{print $$1}' | tr 'a-z' 'A-Z'))
+	echo "Calculated MD5: $(MD5_VALUE)"
+	# 创建构建产物目录
+	mkdir -p $(BUILD_ARTIFACTS_DIR)/application
+	# 复制必要的 WASM 文件到构建产物目录
+	cp $(INSTALL_DIR)/application_bg.wasm $(BUILD_ARTIFACTS_DIR)/application/
+	cp $(INSTALL_DIR)/application_bg.wasm.d.ts $(BUILD_ARTIFACTS_DIR)/application/
+	# 记录 MD5 到文件中
+	echo "$(MD5_VALUE)" > $(BUILD_ARTIFACTS_DIR)/wasm.md5
+	# 直接修改 generate-helm.sh 脚本中的 IMAGE_VALUE
+	sed -i 's/^IMAGE_VALUE=.*$$/IMAGE_VALUE="$(MD5_VALUE)"/' scripts/generate-helm.sh
+	# 运行 generate-helm.sh 脚本
 	chmod +x scripts/generate-helm.sh
 	./scripts/generate-helm.sh
-	echo "MD5:"
-	md5sum $(INSTALL_DIR)/application_bg.wasm | awk '{print $$1}'
-
-env: # 新目标：更新环境变量和 GitHub Secrets
-	@echo "Updating IMAGE in .env with new MD5..."
-	@MD5=$$(md5sum $(INSTALL_DIR)/application_bg.wasm | awk '{print $$1}' | tr 'a-z' 'A-Z'); \
-	if [ -f .env ]; then \
-		sed -i.bak "s/^IMAGE=.*$$/IMAGE=\"$$MD5\"/" .env && rm -f .env.bak || sed -i "" "s/^IMAGE=.*$$/IMAGE=\"$$MD5\"/" .env; \
-	else \
-		echo "IMAGE=\"$$MD5\"" > .env; \
-	fi
-	@echo "Updating GitHub Secrets from .env..."
-	chmod +x scripts/setup-secrets.sh
-	./scripts/setup-secrets.sh
-
 
 clean:
 	rm -rf pkg
 	rm -rf ./src/admin.pubkey
+	rm -rf $(BUILD_ARTIFACTS_DIR)
+	rm -rf helm-charts
 
 run:
 	node ./ts/src/service.js

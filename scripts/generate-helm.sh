@@ -1,17 +1,15 @@
 #!/bin/bash
 
 # 设置变量
-CHART_NAME="zkwasm-automata"
+CHART_NAME="holdit-devops"
 ALLOWED_ORIGINS="*" # 多个域名用逗号分隔
 CHART_PATH="./helm-charts/${CHART_NAME}"
-DEPLOY_VALUE="true"
-REMOTE_VALUE="true"
+DEPLOY_VALUE="true" 
+REMOTE_VALUE="true" 
 AUTO_SUBMIT_VALUE="" # 默认为空
-IMAGE_VALUE="CE37CF0DF6D52E3A6D4A0357123FBF39"
-MINI_SERVICE_IMAGE="delphinus/zkwasm-mini-service:latest"
+IMAGE_VALUE="85D8476A9BFD03D7FF9D30FFEFA0C015"
 
 echo "Using IMAGE_VALUE: ${IMAGE_VALUE}"
-echo "Using MINI_SERVICE_IMAGE: ${MINI_SERVICE_IMAGE}"
 
 # 创建必要的目录
 mkdir -p ${CHART_PATH}/templates
@@ -28,126 +26,8 @@ rm -f ${CHART_PATH}/templates/ingress.yaml
 rm -f ${CHART_PATH}/templates/NOTES.txt
 rm -f ${CHART_PATH}/values.yaml
 
-# 创建 deposit service 模板
-cat >${CHART_PATH}/templates/deposit-service-deployment.yaml <<EOL
-{{- if .Values.depositService.enabled }}
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{ include "${CHART_NAME}.fullname" . }}-deposit
-  labels:
-    {{- include "${CHART_NAME}.labels" . | nindent 4 }}
-    app.kubernetes.io/component: deposit-service
-spec:
-  replicas: {{ .Values.depositService.replicaCount }}
-  selector:
-    matchLabels:
-      {{- include "${CHART_NAME}.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: deposit-service
-  template:
-    metadata:
-      labels:
-        {{- include "${CHART_NAME}.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: deposit-service
-    spec:
-      containers:
-        - name: deposit-service
-          image: "{{ .Values.depositService.image.repository }}:{{ .Values.depositService.image.tag }}"
-          imagePullPolicy: {{ .Values.depositService.image.pullPolicy }}
-          args: ["deposit"]
-          ports:
-            - name: http
-              containerPort: 3000
-              protocol: TCP
-          resources:
-            {{- toYaml .Values.depositService.resources | nindent 12 }}
-{{- end }}
-EOL
-
-# 创建 deposit service service 模板
-cat >${CHART_PATH}/templates/deposit-service-service.yaml <<EOL
-{{- if .Values.depositService.enabled }}
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ include "${CHART_NAME}.fullname" . }}-deposit
-  labels:
-    {{- include "${CHART_NAME}.labels" . | nindent 4 }}
-    app.kubernetes.io/component: deposit-service
-spec:
-  type: ClusterIP
-  ports:
-    - port: 3000
-      targetPort: http
-      protocol: TCP
-      name: http
-  selector:
-    {{- include "${CHART_NAME}.selectorLabels" . | nindent 4 }}
-    app.kubernetes.io/component: deposit-service
-{{- end }}
-EOL
-
-# 创建 settlement service 模板
-cat >${CHART_PATH}/templates/settlement-service-deployment.yaml <<EOL
-{{- if .Values.settlementService.enabled }}
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{ include "${CHART_NAME}.fullname" . }}-settlement
-  labels:
-    {{- include "${CHART_NAME}.labels" . | nindent 4 }}
-    app.kubernetes.io/component: settlement-service
-spec:
-  replicas: {{ .Values.settlementService.replicaCount }}
-  selector:
-    matchLabels:
-      {{- include "${CHART_NAME}.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: settlement-service
-  template:
-    metadata:
-      labels:
-        {{- include "${CHART_NAME}.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: settlement-service
-    spec:
-      containers:
-        - name: settlement-service
-          image: "{{ .Values.settlementService.image.repository }}:{{ .Values.settlementService.image.tag }}"
-          imagePullPolicy: {{ .Values.settlementService.image.pullPolicy }}
-          args: ["settlement"]
-          ports:
-            - name: http
-              containerPort: 3000
-              protocol: TCP
-          resources:
-            {{- toYaml .Values.settlementService.resources | nindent 12 }}
-{{- end }}
-EOL
-
-# 创建 settlement service service 模板
-cat >${CHART_PATH}/templates/settlement-service-service.yaml <<EOL
-{{- if .Values.settlementService.enabled }}
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ include "${CHART_NAME}.fullname" . }}-settlement
-  labels:
-    {{- include "${CHART_NAME}.labels" . | nindent 4 }}
-    app.kubernetes.io/component: settlement-service
-spec:
-  type: ClusterIP
-  ports:
-    - port: 3000
-      targetPort: http
-      protocol: TCP
-      name: http
-  selector:
-    {{- include "${CHART_NAME}.selectorLabels" . | nindent 4 }}
-    app.kubernetes.io/component: settlement-service
-{{- end }}
-EOL
-
 # 创建 PVC 模板
-cat >${CHART_PATH}/templates/mongodb-pvc.yaml <<EOL
+cat > ${CHART_PATH}/templates/mongodb-pvc.yaml << EOL
 {{- if and .Values.config.mongodb.enabled .Values.config.mongodb.persistence.enabled }}
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -170,34 +50,34 @@ EOL
 # 获取远程仓库信息
 REPO_URL=$(git config --get remote.origin.url)
 if [[ $REPO_URL == *"github.com"* ]]; then
-	# 从 GitHub URL 提取用户名/组织名
-	if [[ $REPO_URL == *":"* ]]; then
-		# SSH 格式: git@github.com:username/repo.git
-		REPO_OWNER=$(echo $REPO_URL | sed -E 's/.*:([^\/]+)\/[^\/]+.*/\1/')
-	else
-		# HTTPS 格式: https://github.com/username/repo.git
-		REPO_OWNER=$(echo $REPO_URL | sed -E 's/.*github\.com\/([^\/]+).*/\1/')
-	fi
-
-	# 确保只提取用户名部分，移除任何 URL 前缀
-	REPO_OWNER=$(echo $REPO_OWNER | sed 's/https:\/\///g' | sed 's/http:\/\///g')
-
-	# 确保只提取用户名部分，移除 github.com 和后面的路径
-	REPO_OWNER=$(echo $REPO_OWNER | sed 's/github\.com\///g' | sed 's/\/.*//g')
-
-	# 转换为小写
-	REPO_OWNER=$(echo $REPO_OWNER | tr '[:upper:]' '[:lower:]')
+  # 从 GitHub URL 提取用户名/组织名
+  if [[ $REPO_URL == *":"* ]]; then
+    # SSH 格式: git@github.com:username/repo.git
+    REPO_OWNER=$(echo $REPO_URL | sed -E 's/.*:([^\/]+)\/[^\/]+.*/\1/')
+  else
+    # HTTPS 格式: https://github.com/username/repo.git
+    REPO_OWNER=$(echo $REPO_URL | sed -E 's/.*github\.com\/([^\/]+).*/\1/')
+  fi
+  
+  # 确保只提取用户名部分，移除任何 URL 前缀
+  REPO_OWNER=$(echo $REPO_OWNER | sed 's/https:\/\///g' | sed 's/http:\/\///g')
+  
+  # 确保只提取用户名部分，移除 github.com 和后面的路径
+  REPO_OWNER=$(echo $REPO_OWNER | sed 's/github\.com\///g' | sed 's/\/.*//g')
+  
+  # 转换为小写
+  REPO_OWNER=$(echo $REPO_OWNER | tr '[:upper:]' '[:lower:]')
 else
-	# 如果不是 GitHub 仓库，使用默认值
-	REPO_OWNER="jupiterxiaoxiaoyu"
-	echo "Warning: Not a GitHub repository or couldn't determine owner. Using default: $REPO_OWNER"
+  # 如果不是 GitHub 仓库，使用默认值
+  REPO_OWNER="jupiterxiaoxiaoyu"
+  echo "Warning: Not a GitHub repository or couldn't determine owner. Using default: $REPO_OWNER"
 fi
 
 # 打印提取的用户名，用于调试
 echo "Using repository owner: $REPO_OWNER"
 
 # 生成新的 values.yaml
-cat >${CHART_PATH}/values.yaml <<EOL
+cat > ${CHART_PATH}/values.yaml << EOL
 # Default values for ${CHART_NAME}
 replicaCount: 1
 
@@ -205,37 +85,6 @@ image:
   repository: ghcr.io/${REPO_OWNER}/${CHART_NAME}
   pullPolicy: IfNotPresent
   tag: "latest"  # 可以是 latest 或 MD5 值
-
-# Mini-service components
-depositService:
-  enabled: true
-  replicaCount: 1
-  image:
-    repository: ${MINI_SERVICE_IMAGE%:*}
-    tag: ${MINI_SERVICE_IMAGE#*:}
-    pullPolicy: IfNotPresent
-  resources:
-    limits:
-      cpu: 500m
-      memory: 512Mi
-    requests:
-      cpu: 100m
-      memory: 128Mi
-
-settlementService:
-  enabled: true
-  replicaCount: 1
-  image:
-    repository: ${MINI_SERVICE_IMAGE%:*}
-    tag: ${MINI_SERVICE_IMAGE#*:}
-    pullPolicy: IfNotPresent
-  resources:
-    limits:
-      cpu: 500m
-      memory: 512Mi
-    requests:
-      cpu: 100m
-      memory: 128Mi
 
 # 添加 ingress 配置
 ingress:
@@ -319,7 +168,7 @@ affinity: {}
 EOL
 
 # 生成 deployment.yaml
-cat >${CHART_PATH}/templates/deployment.yaml <<EOL
+cat > ${CHART_PATH}/templates/deployment.yaml << EOL
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -371,7 +220,7 @@ spec:
 EOL
 
 # 生成 service.yaml
-cat >${CHART_PATH}/templates/service.yaml <<EOL
+cat > ${CHART_PATH}/templates/service.yaml << EOL
 apiVersion: v1
 kind: Service
 metadata:
@@ -390,7 +239,7 @@ spec:
 EOL
 
 # 生成 NOTES.txt
-cat >${CHART_PATH}/templates/NOTES.txt <<EOL
+cat > ${CHART_PATH}/templates/NOTES.txt << EOL
 1. Get the application URL by running these commands:
 {{- if contains "NodePort" .Values.service.type }}
   export NODE_PORT=\$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "${CHART_NAME}.fullname" . }})
@@ -410,7 +259,7 @@ cat >${CHART_PATH}/templates/NOTES.txt <<EOL
 EOL
 
 # 更新 Chart.yaml
-cat >${CHART_PATH}/Chart.yaml <<EOL
+cat > ${CHART_PATH}/Chart.yaml << EOL
 apiVersion: v2
 name: ${CHART_NAME}
 description: A Helm chart for HelloWorld Rollup service
@@ -420,7 +269,7 @@ appVersion: "1.0.0"
 EOL
 
 # 生成 .helmignore
-cat >${CHART_PATH}/.helmignore <<EOL
+cat > ${CHART_PATH}/.helmignore << EOL
 # Patterns to ignore when building packages.
 *.tgz
 .git
@@ -431,7 +280,7 @@ cat >${CHART_PATH}/.helmignore <<EOL
 EOL
 
 # 生成 mongodb-deployment.yaml
-cat >${CHART_PATH}/templates/mongodb-deployment.yaml <<EOL
+cat > ${CHART_PATH}/templates/mongodb-deployment.yaml << EOL
 {{- if .Values.config.mongodb.enabled }}
 apiVersion: apps/v1
 kind: Deployment
@@ -464,7 +313,7 @@ spec:
 EOL
 
 # 生成 redis-deployment.yaml
-cat >${CHART_PATH}/templates/redis-deployment.yaml <<EOL
+cat > ${CHART_PATH}/templates/redis-deployment.yaml << EOL
 {{- if .Values.config.redis.enabled }}
 apiVersion: apps/v1
 kind: Deployment
@@ -492,7 +341,7 @@ spec:
 EOL
 
 # 生成 merkle-deployment.yaml
-cat >${CHART_PATH}/templates/merkle-deployment.yaml <<EOL
+cat > ${CHART_PATH}/templates/merkle-deployment.yaml << EOL
 {{- if .Values.config.merkle.enabled }}
 apiVersion: apps/v1
 kind: Deployment
@@ -530,7 +379,7 @@ spec:
 EOL
 
 # 生成 mongodb-pvc.yaml
-cat >${CHART_PATH}/templates/mongodb-pvc.yaml <<EOL
+cat > ${CHART_PATH}/templates/mongodb-pvc.yaml << EOL
 {{- if and .Values.config.mongodb.enabled .Values.config.mongodb.persistence.enabled }}
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -551,7 +400,7 @@ spec:
 EOL
 
 # 生成 mongodb-service.yaml
-cat >${CHART_PATH}/templates/mongodb-service.yaml <<EOL
+cat > ${CHART_PATH}/templates/mongodb-service.yaml << EOL
 apiVersion: v1
 kind: Service
 metadata:
@@ -569,7 +418,7 @@ spec:
 EOL
 
 # 生成 merkle-service.yaml
-cat >${CHART_PATH}/templates/merkle-service.yaml <<EOL
+cat > ${CHART_PATH}/templates/merkle-service.yaml << EOL
 apiVersion: v1
 kind: Service
 metadata:
@@ -587,7 +436,7 @@ spec:
 EOL
 
 # 生成 redis-service.yaml
-cat >${CHART_PATH}/templates/redis-service.yaml <<EOL
+cat > ${CHART_PATH}/templates/redis-service.yaml << EOL
 apiVersion: v1
 kind: Service
 metadata:
@@ -605,7 +454,7 @@ spec:
 EOL
 
 # 生成 ingress.yaml
-cat >${CHART_PATH}/templates/ingress.yaml <<EOL
+cat > ${CHART_PATH}/templates/ingress.yaml << EOL
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -650,3 +499,4 @@ chmod +x scripts/generate-helm.sh
 
 echo "Helm chart generated successfully at ${CHART_PATH}"
 
+echo "Helm chart generation completed successfully" 
