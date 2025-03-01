@@ -34,7 +34,7 @@ config:
     deploy: "true"
     remote: "true"
     autoSubmit: "true"
-    image: "85D8476A9BFD03D7FF9D30FFEFA0C015"
+    image: "B4A44031506BA2199DF428F747176CAC"
   mongodb:
     enabled: true
     image:

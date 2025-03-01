@@ -19,18 +19,19 @@ build: ./src/admin.pubkey ./ts/src/service.js
 	cp pkg/application_bg.wasm.d.ts $(INSTALL_DIR)/application_bg.wasm.d.ts
 	cd $(RUNNING_DIR) && npx tsc && cd -
 	echo "MD5:"
-	# 获取 MD5 值并转换为大写
-	$(eval MD5_VALUE := $(shell md5sum $(INSTALL_DIR)/application_bg.wasm | awk '{print $$1}' | tr 'a-z' 'A-Z'))
-	echo "Calculated MD5: $(MD5_VALUE)"
+	# 计算 MD5 并在同一个 shell 会话中使用它
+	MD5_VALUE=$$(md5sum pkg/application_bg.wasm | awk '{print $$1}' | tr 'a-z' 'A-Z') && \
+	echo "Calculated MD5: $$MD5_VALUE" && \
+	sed -i "s/^IMAGE_VALUE=.*$$/IMAGE_VALUE=\"$$MD5_VALUE\"/" scripts/generate-helm.sh
+	# 下面添加您需要执行的命令
+	echo "继续执行后续命令"
 	# 创建构建产物目录
 	mkdir -p $(BUILD_ARTIFACTS_DIR)/application
 	# 复制必要的 WASM 文件到构建产物目录
 	cp $(INSTALL_DIR)/application_bg.wasm $(BUILD_ARTIFACTS_DIR)/application/
 	cp $(INSTALL_DIR)/application_bg.wasm.d.ts $(BUILD_ARTIFACTS_DIR)/application/
 	# 记录 MD5 到文件中
-	echo "$(MD5_VALUE)" > $(BUILD_ARTIFACTS_DIR)/wasm.md5
-	# 直接修改 generate-helm.sh 脚本中的 IMAGE_VALUE
-	sed -i 's/^IMAGE_VALUE=.*$$/IMAGE_VALUE="$(MD5_VALUE)"/' scripts/generate-helm.sh
+	echo "$$MD5_VALUE" > $(BUILD_ARTIFACTS_DIR)/wasm.md5
 	# 运行 generate-helm.sh 脚本
 	chmod +x scripts/generate-helm.sh
 	./scripts/generate-helm.sh
