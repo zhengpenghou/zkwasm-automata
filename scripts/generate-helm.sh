@@ -1,13 +1,17 @@
 #!/bin/bash
 
-# 设置变量
-CHART_NAME="zkwasm-automata"
+# Get chart name from parent directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PARENT_DIR="$(basename "$(dirname "$SCRIPT_DIR")")"
+CHART_NAME="$PARENT_DIR"
+
+echo "Using chart name from parent directory: $CHART_NAME"
 ALLOWED_ORIGINS="*" # 多个域名用逗号分隔
 CHART_PATH="./helm-charts/${CHART_NAME}"
 DEPLOY_VALUE="true" 
 REMOTE_VALUE="true" 
 AUTO_SUBMIT_VALUE="true" # 默认为空
-IMAGE_VALUE="B72ED2D1939B435FE9E3EA406C03C265"
+IMAGE_VALUE="2B380903285C7153DD9431D33299B9AE"
 
 echo "Using IMAGE_VALUE: ${IMAGE_VALUE}"
 
