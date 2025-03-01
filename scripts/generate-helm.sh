@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # 设置变量
-CHART_NAME="holdit-devops"
+CHART_NAME="zkwasm-automata"
 ALLOWED_ORIGINS="*" # 多个域名用逗号分隔
 CHART_PATH="./helm-charts/${CHART_NAME}"
 DEPLOY_VALUE="true" 
 REMOTE_VALUE="true" 
-AUTO_SUBMIT_VALUE="" # 默认为空
+AUTO_SUBMIT_VALUE="true" # 默认为空
 IMAGE_VALUE="85D8476A9BFD03D7FF9D30FFEFA0C015"
 
 echo "Using IMAGE_VALUE: ${IMAGE_VALUE}"
@@ -240,7 +240,7 @@ EOL
 
 # 生成 NOTES.txt
 cat > ${CHART_PATH}/templates/NOTES.txt << EOL
-1. Get the application URL by running these commands:
+1. Get the application URL by running these commands:85D8476A9BFD03D7FF9D30FFEFA0C015
 {{- if contains "NodePort" .Values.service.type }}
   export NODE_PORT=\$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "${CHART_NAME}.fullname" . }})
   export NODE_IP=\$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
