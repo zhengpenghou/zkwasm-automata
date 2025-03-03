@@ -1,0 +1,87 @@
+# Default values for zkwasm-automata
+replicaCount: 1
+
+image:
+  repository: ghcr.io/zhengpenghou/zkwasm-automata
+  pullPolicy: IfNotPresent
+  tag: "latest"  # 可以是 latest 或 MD5 值
+
+# 添加 ingress 配置
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  # TLS 配置
+  tls:
+    enabled: true
+  # 域名配置
+  domain:
+    base: "zkwasm.ai"
+    prefix: "rpc"  # 生成 rpc.namespace.zkwasm.ai
+  # CORS 配置
+  cors:
+    enabled: true
+    allowOrigins: "*"
+    allowMethods: "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+    allowHeaders: "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
+    allowCredentials: "true"
+    maxAge: "1728000"
+
+# 应用配置
+config:
+  app:
+    deploy: "true"
+    remote: "true"
+    autoSubmit: ""
+    image: "D7D390BCBA51EA839F7761F265FB5DB9"
+  mongodb:
+    enabled: true
+    image:
+      repository: mongo
+      tag: latest
+    port: 27017
+    persistence:
+      enabled: true
+      storageClassName: csi-disk  
+      size: 10Gi
+  redis:
+    enabled: true
+    image:
+      repository: redis
+      tag: latest
+    port: 6379
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "256Mi"
+        cpu: "200m"
+  merkle:
+    enabled: true
+    image:
+      repository: sinka2022/zkwasm-merkleservice
+      tag: latest
+    port: 3030
+
+service:
+  type: ClusterIP
+  port: 3000
+
+# 初始化容器配置
+initContainer:
+  enabled: true
+  image: node:18-slim
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

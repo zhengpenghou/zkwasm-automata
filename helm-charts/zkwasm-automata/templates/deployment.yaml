@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "zkwasm-automata.fullname" . }}
+  labels:
+    {{- include "zkwasm-automata.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "zkwasm-automata.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "zkwasm-automata.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: app
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        command: ["node"]
+        args: ["--experimental-modules", "--es-module-specifier-resolution=node", "ts/src/service.js"]
+        env:
+        - name: URI
+          value: mongodb://{{ include "zkwasm-automata.fullname" . }}-mongodb:{{ .Values.config.mongodb.port }}
+        - name: REDISHOST
+          value: {{ include "zkwasm-automata.fullname" . }}-redis
+        - name: REDIS_PORT
+          value: "{{ .Values.config.redis.port }}"
+        - name: MERKLE_SERVER
+          value: http://{{ include "zkwasm-automata.fullname" . }}-merkle:{{ .Values.config.merkle.port }}
+        - name: SERVER_ADMIN_KEY
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: SERVER_ADMIN_KEY
+        - name: DEPLOY
+          value: "{{ .Values.config.app.deploy | default "true" }}"
+        - name: REMOTE
+          value: "{{ .Values.config.app.remote | default "true" }}"
+        - name: AUTO_SUBMIT
+          value: "{{ .Values.config.app.autoSubmit | default "" }}"
+        - name: IMAGE
+          value: "{{ .Values.config.app.image | default "" }}"
+        ports:
+        - containerPort: 3000
+          name: http
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}

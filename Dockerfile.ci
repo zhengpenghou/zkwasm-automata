@@ -1,0 +1,68 @@
+# Build stage
+FROM node:18-bullseye as builder
+
+WORKDIR /app
+
+# 复制项目文件
+COPY . .
+
+# 先安装 npm 依赖
+RUN cd ts && npm install && npx tsc
+
+# 复制预构建的 WASM 文件
+COPY build-artifacts/application/* ts/node_modules/zkwasm-ts-server/src/application/
+
+# Run publish script with retries (if needed)
+RUN if [ -f ts/publish.sh ]; then \
+      chmod +x ts/publish.sh && \
+      cd ts && \
+      for i in 1 2 3; do \
+        echo "----------------------------------------" && \
+        echo "Starting attempt $i to publish image..." && \
+        echo "Running: publish.sh" && \
+        echo "----------------------------------------" && \
+        output=$(./publish.sh 2>&1) && \
+        echo "Command output:" && \
+        echo "$output" && \
+        echo "----------------------------------------" && \
+        if echo "$output" | grep -q "already exists\|Add Image Response"; then \
+          echo "Successfully published image" && \
+          break; \
+        else \
+          if [ $i -eq 3 ]; then \
+            echo "Failed to publish image after 3 attempts" && \
+            echo "Last error output:" && \
+            echo "$output" && \
+            exit 1; \
+          fi; \
+          echo "Publish failed, retrying in 5 seconds..." && \
+          echo "Error output:" && \
+          echo "$output" && \
+          sleep 5; \
+        fi; \
+      done; \
+    else \
+      echo "Skipping image publishing (publish.sh not found)"; \
+    fi
+
+# Production stage
+FROM node:18-slim
+
+# 设置非敏感环境变量
+ENV NODE_ENV="production"
+
+WORKDIR /app
+
+# Copy only necessary files from builder
+COPY --from=builder /app/ts ./ts
+COPY --from=builder /app/src/admin.pubkey ./src/admin.pubkey
+
+# Create user first
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Switch to non-root user
+USER appuser
+
+EXPOSE 3000
+# 应用将从 Kubernetes Secret 获取环境变量
+CMD ["node", "./ts/src/service.js"]
