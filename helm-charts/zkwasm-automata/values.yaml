@@ -3,7 +3,7 @@ replicaCount: 1
 
 image:
   repository: ghcr.io/zhengpenghou/zkwasm-automata
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
   tag: "latest"  # 可以是 latest 或 MD5 值
 
 # 添加 ingress 配置
@@ -33,7 +33,7 @@ config:
   app:
     deploy: "true"
     remote: "true"
-    autoSubmit: ""
+    autoSubmit: "true"
     image: "D7D390BCBA51EA839F7761F265FB5DB9"
   mongodb:
     enabled: true
